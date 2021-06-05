@@ -1,6 +1,7 @@
-#ifndef SOCKET_SERVER.H
-#define SOCKET_SERVER.H
+#ifndef SOCKET_SERVER_H
+#define SOCKET_SERVER_H
 
+#include "serverInfo.h"
 #include <sys/types.h>
 #include <unistd.h>
 #include <sys/socket.h>
@@ -9,10 +10,13 @@
 #include <string.h>
 #include <iostream>
 #include <string>
+#include<pthread.h>
 
-void * sendMsg();
-void * listener;
+void * connectionHandler(void * socketDesc);
+void sendMsg(player * currPlayer, char * msg);
+void listener(player * currPlayer);
 int setServerSocket();
-awaitPlayersConnection();
+int awaitPlayersConnection(player * activePlayers);
+void closeServer(player * activePlayers);
 
 #endif

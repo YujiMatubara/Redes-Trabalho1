@@ -20,15 +20,6 @@
 #include "gameLogicServer.h"
 #include "socketServer.h"
 
-// Naipes: ordenadas de mais fortes para menos fortes
-#define PAUS 0
-#define COPAS 1
-#define ESPADAS 2
-#define OUROS 3
-
-#define DECK_SIZE 40 // quantidade de cartas no baralho
-#define NB_PLAYERS 4 // número de jogadores
-
 const char cards[] = { '3' , '2', 'A', 'K', 'J', 'Q', '7', '6', '5', '4'}; // ordenadas de mais fortes para menos fortes
 const int endRoundPonts = 12;
 
