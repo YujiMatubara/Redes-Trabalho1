@@ -1,4 +1,5 @@
 #include "gameLogicClient.hpp"
+#include "socketClient.hpp"
 
 std::map< std::string, std::string> cardDrawings;
 
@@ -67,7 +68,7 @@ return;
 }
 
 // Função que mostra todos os elementos do jogo na tela do cliente (nº de cartas do jogador, carta atual na mesa etc.)
-void showScreenElements(int playerID, int * cardsInHand, std::string currCardName, int nbPlayers, int activePlayerID) {
+void showScreenElements(int playerID, std::vector<int> & cardsInHand, std::string currCardName, int nbPlayers, int activePlayerID) {
     // "Limpa" a tela
     for (int n = 0; n < 4; n++)
         printf("\n\n\n\n\n\n\n\n\n\n");
@@ -120,28 +121,61 @@ char getKeyPress() {
 */
 
 // Função que fica esperando mensagem via socket do servidor indicando início do jogo
-bool waitStartGameSignal(int * nbPlayers, std::string & nextCardName, vector<int> & cardsInHand) {
+bool waitStartGameSignal(int clientSocket, int * nbPlayers, std::string & nextCardName, int * nextActivePlayer, std::vector<int> & cardsInHand) {
     // provavelmente isso é uma função que fica no arquivo de socket
     // o servidor vai enviar o estado do início de jogo
     // Informações relevantes: nª de jogadores, cartas na mão de cada jogador, próxima carta a ser jogada
-    // Recebe do servidor "nbPlayers|nextCardName|cardsInHand_Player0|cardsInHand_Player1|...|cardsInHand_PlayerN"
+    // Recebe do servidor "nbPlayers|nextCardName|nextActivePlayer|cardsInHand_Player0|cardsInHand_Player1|...|cardsInHand_PlayerN"
+    std::string serverResponse = receiveMessage(clientSocket);
+    std::string delimiter = "|";
 
+    //quebrando a resposta do servidor em variaveis separadas
+    serverResponse.substr(0, "|");
+    int nbPlayers = atoi(serverResponse.substr(0, serverResponse.find(delimiter)));
+    int nextCardName;
+    int nextActivePlayer;
+    //cardsInHand
+    
+    
 }
 
-void * listen() {
-    // chama função do socket aqui que escuta servidor
-    // atualiza "nbPlayers|nextCardName|cardsInHand_Player0|cardsInHand_Player1|...|cardsInHand_PlayerN"
+void * listen(int clientSocket, int * nbPlayers, std::string & nextCardName, std::vector<int> & cardsInHand) {
+    // chama função do socket que escuta servidor
+    std::string serverResponse = receiveMessage(clientSocket);
+    
+    // atualiza "nbPlayers|nextCardName|nextActivePlayer|cardsInHand_Player0|cardsInHand_Player1|...|cardsInHand_PlayerN"
+    // mutex aqui para atualizar os valores
+
+    return 0;
 }
 
-void * sendMsg() {
+void * sendMsg(int clientSocket, int playerID, int * nbPlayers, std::string & nextCardName, int * nextActivePlayer, std::vector<int> & cardsInHand) {
     char keyPressed = getKeyPress();
     // chama função que envia mensagem para o socket -> enviar keyPressed
+    
+    // mutex aqui para verificar os dados do estado do jogo
+    if (keyPressed == 10) {// ENTER -> comando para bater na mesa
+        sendMessage(clientSocket, "slam_table");
+        std::string serverResp = receiveMessage(clientSocket);
+        // servidor manda valores atualizados
+    }
+    else if (keyPressed = 'x') { // pressionou o 'x' -> comando de baixar carta
+        if (*nextActivePlayer == playerID) { // se o próximo player for o playerID, ele pode enviar o comando de baixar carta
+
+        }
+    }
+    else { // pressionou o 'q'
+
+    }
+    // fim mutex lock
+
+    return 0;
 }
 
 int main(int argc, char const *argv[]) {
-    int playerID, nbPlayers;
-    std::string nextCardName;
-    vector<int> cardsInHand;
+    int playerID = -1, nbPlayers;
+    std::string nextCardName, nextActivePlayer;
+    std::vector<int> cardsInHand;
 
     if (argc < 3) {
         printf("[ERRO] É necessário passar IP e PORTA no qual você deseja conectar-se!\n[?] Como usar: ./cliente [IP] [PORTA]\n");
@@ -150,17 +184,32 @@ int main(int argc, char const *argv[]) {
 
     std::string serverIP = argv[1];
     int serverPort = atoi(argv[2]);
+
+    if (serverIP.size() > 16) {
+        printf("[!] IP muito longo -> formato aceito: XXX.XXX.XXX.XXX\n");
+        return 1;
+    }
     
     printf("[*] Tentando conectar-se à %s:%d...\n", serverIP.c_str(), serverPort);
     // Conecta via socket com o servidor em IP:port
-    // ===========================
-    // Conexão via socket aqui
-    // --> PlayerID é definido aqui <--
-    // ===========================
+    int clientSocket = initializeSocket();  //iniciar socket do cliente
+    
+    if (startConnection(clientSocket, serverPort, serverIP.c_str()) != 0) { //conectar ao servidor
+        std::cout << "ERRO ao conectar com o servidor!\n";
+        return 1;
+    }
 
+    // Define o playerID (pede para o servidor enviar o playerID)
+    sendMessage(clientSocket, "get_player_id");
+    playerID = atoi(receiveMessage(clientSocket));
 
-    printf("[*] Esperando sinal de início de jogo");
-    while (waitStartGameSignal(&nbPlayers, nextCardName, cardsInHand)) {}; // espera sinal de começo de jogo
+    if (playerID == -1) {
+        std::cout << "ERRO ao tentar definir o PlayerID.\n";
+        return 1;
+    }
+
+    printf("[*] Esperando sinal de início de jogo\n");
+    while (waitStartGameSignal(clientSocket, &nbPlayers, nextCardName, cardsInHand)) {}; // espera sinal de começo de jogo
 
     loadCardDrawings(); // salva o desenho das cartas em um array
 
@@ -169,8 +218,8 @@ int main(int argc, char const *argv[]) {
     // Se o nextActivePlayer for o playerID, é permitido que esse cliente envie mensagem para o servidor
     // Thread 2 => fica esperando entrada do usuário ( getKeyPress() ) e, dependendo do nextActivePlayer, permite que o usuário envio o comando de baixar carta
     // O comando de bater na mesa é disponível sempre
-    std::thread listenServerThread( listen );
-    std::thread sendMsgThread( sendMsg );
+    std::thread listenServerThread( listen, clientSocket, nbPlayers, nextCardName, &nextActivePlayer, cardsInHand );
+    std::thread sendMsgThread( sendMsg, clientSocket, playerID, nbPlayers, nextCardName, &nextActivePlayer, cardsInHand );
 
     int cardsInHand[4] = { 10, 7, 8, 15};
     showScreenElements(1, cardsInHand, "A_Ouros", 4, 3);

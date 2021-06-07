@@ -1,5 +1,5 @@
 /* 
-    Presidente
+    Tapão
  * Algumas regras:
  *
  *  Todos os jogadores recebem um monte de cartas, e elas devem ser jogadas de costas, para que os valores sejam
@@ -20,7 +20,6 @@
 const char cardsSequence[] = { 'A' , '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K'};
 
 std::vector<card> deck;
-std::vector<card> currRoundDeck; // cópia do deck usada para a distribuição
 player activePlayers[MAX_PLAYERS];
 int activePlayersNB = MAX_PLAYERS;
 
@@ -34,7 +33,7 @@ void createDeck() {
         }
     }
     
-    std::cout << "Deck inicializado\n";
+    printf("Deck inicializado\n");
 
     return;
 }
@@ -55,62 +54,95 @@ void giveCards() {
     // Distribui as cartas até o deck acabar
 
     int currPlayer = 0;
-    while(!currRoundDeck.empty()) {
+    while(!deck.empty()) {
         
         // Tira uma carta do final do deck e coloca na mão do jogador
-        card selectedCard = currRoundDeck.back();
-        currRoundDeck.pop_back();
+        int index = activePlayers[currPlayers].cardsInHand++;
+        activePlayers[currPlayers].hand[index] = deck.back();
+        deck.pop_back();
 
-        activePlayers[currPlayers].hand[activePlayers[currPlayers].cardsInHand++] = selectedCard;
+        // Prepara para distribuir a carta para o próximo jogador
         currPlayer = (currPlayer+1)%activePlayersNB;
-        printf("Carta %c do náipe %d entregue ao jogador %d\n", selectedCard.value, selectedCard.suit, currPlayer);
     }
 
+    return;
+}
+
+// Função temporária para emular uma resposta do socket
+int lose() {
+    return rand()%1;
 }
 
 // O funcionamento principal do jogo ocorre dentro desta etapa
 void newRound() {
     int currPlayer = 0;
+    bool endGame = false
     std::vector<card> stack;
 
-    // A partida se repete enquanto tiver pelo menos dois jogadores
-    while(currPlayersNB > 1) {
+    // A partida se repete enquanto ninguém ficar com todas as cartas
+    while(!endGame) {
         
-        Boolean endedRound = false;
-        // Laço que se repete até que alguém fique com o monte
-        while(!endedRound) {
+        if(activePlayers[currPlayer].cardsInHand != 0) {
+            // Se o jogador ainda está na partida
 
-            if(activePlayers[currPlayer].cardsInHand != 0) {
-                // Se o jogador ainda não ganhou
-
-                /* ================================
-                Pegar a carta escolhida pelo jogador por meio do socket
-                ==================================*/
-
-                // Tira a carta do monte do jogador e coloca na pilha
-                card selectedCard = activePlayers[currPlayers].hand.back();
-                activePlayers[currPlayers].hand.pop_back();
-                activePlayers[currPlayers].cardsInHand--;
-
-
-                /* ================================
-                Atualizar a tela mostrando a selectedCard no topo
-                ==================================*/
-                stack.push_back(selectedCard);
-                
-                /* ================================
-                Obter o jogador que bateu por último ou bateu na carta errada
-                ==================================*/
-                int losingPlayer;
-                // ESSE DO WHILE É PROVISÓRIO, para substituir a escolha do jogador
-                do {
-                    losingPlayer = rand() % activePlayersNB;
-                } while (activePlayers[losingPlayer].cardsInHand == 0);
+            if(activePlayers[currPlayer].cardsInHand == DECK_SIZE) {
+                // Se alguém ficou com todas as cartas (perdeu)
+                printf("O jogador %d perdeu a partida\n", currPlayer);
+                endGame = true;
+                return;
             }
-            currPlayer = (currPlayer+1)%activePlayersNB;
+
+            /* ================================
+            Pegar a carta escolhida pelo jogador por meio do socket
+            ==================================*/
+
+            // Tira a carta do deck do jogador e coloca na pilha
+            stack.push_back(activePlayers[currPlayer].hand.back());
+            activePlayers[currPlayer].hand.pop_back();
+            activePlayers[currPlayer].cardsInHand--;
+
+            /* ================================
+            Atualizar a tela mostrando a nova carta no topo da pilha
+            ==================================*/
+            
+            /* ================================
+            Obter o jogador que bateu por último ou bateu na carta errada para dar o monte
+            ==================================*/
+
+            // Se alguém bateu por último ou bateu errado
+            if(lose()) {
+                int losingPlayer; // Armazena o índice do jogador que perdeu
+                /*@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+                ESSE DO WHILE É PROVISÓRIO, para substituir a escolha do jogador com socket*/
+                do {
+                    losingPlayer = rand()%activePlayersNB;
+                } while (activePlayers[losingPlayer].cardsInHand == 0);
+                //@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+
+                // O jogador que perde fica com a pilha de cartas
+                activePlayers[losingPlayer].cardsInHand += stack.size();
+                while(!stack.empty()) {
+                    activePlayers[losingPlayer].hand.push_back(stack.back());
+                    stack.pop_back();
+                }
+
+                if(activePlayers[currPlayer].cardsInHand == 0)
+                    printf("O jogador %d venceu\n", currPlayer);
+
+                currPlayer = losingPlayer;
+                
+            }
+            else
+                // Vai para o próximo jogador
+                currPlayer = (currPlayer+1)%activePlayersNB;
         }
+        else
+            // Vai para o próximo jogador
+            currPlayer = (currPlayer+1)%activePlayersNB;
 
     }
+
+    return;
 }
 
 // Função que inicia o jogo

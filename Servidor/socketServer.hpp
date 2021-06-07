@@ -17,7 +17,7 @@
 
 class Server{
     private:
-        bool gameRunning;
+        std::string gamePhase;
         int socketServer;
         struct sockaddr_in addr;
         std::unordered_map<long,player> activePlayers;
@@ -46,4 +46,13 @@ class Server{
         void endingThread(int,int,int);
         void treatMessages(char*,int,int);
         int msgSize(int);
+
+        std::string preGameStart();
+        std::string onGame();
+    private:
+        std::unordered_map<std::string,std::string(Server::*)()> serverPhases{
+            {"preGameStart",&Server::preGameStart},
+            {"onGame",&Server::onGame}
+        }
+
 };

@@ -1,18 +1,11 @@
 #include "socketClient.hpp"
 
-// struct sockaddr_in{ //dados do host para comunicacao
-//     short int sin_family;
-//     unsigned short int sin_port;
-//     struct in_addr sin_addr;
-//     unsigned char sin_zero[8];
-// }
-
 /*  inicializa o socket do servidor
  *  retorno:
  *  retorna o socket caso valido
  *  retorna -1 em caso de erro
  */
-int initializeSocket(){
+int initializeSocket() {
     int socketClient;
     socketClient = socket(AF_INET, SOCK_STREAM, 0); //cri socket com: familia do servidor, utiliza o metodo TCP, protocolo IP internet
     if (socketClient == -1) //erro
@@ -29,8 +22,7 @@ int initializeSocket(){
  *  retorna 0 caso valido
  *  retorna -1 em caso de erro
  */
-int startConnection(int socketClient, int port, const char ip[15])
-{
+int startConnection(int socketClient, int port, const char ip[16]) {
     struct sockaddr_in host;
     host.sin_family = AF_INET;  //familia de protocolo: ARPA INTERNET
     host.sin_port = htons(port);   //porta do servidor
@@ -46,42 +38,34 @@ int startConnection(int socketClient, int port, const char ip[15])
 
 /*  arrumar
  */
-void sendMessage(int socketClient)
-{
+void sendMessage(int socketClient, const char * message) {
     int sended = 0;
-    char message[256];
-    while (strcmp(message, "exit") != 0)
-    {
-        std::cout << "Escreva a mensagem que deseja enviar." << std::endl;
-        fgets(message, strlen(message), stdin);
-        message[strlen(message)-1] = '\0';
-        sended = send(socketClient, message, strlen(message), 0);
-    }
-    std::cout << "Mensagem: " << sended << std::endl;
+    sended = send(socketClient, message, strlen(message), 0);
+
+    if (sended == -1)
+        printf("Erro no envio da mensagem para o servidor.\n");
 
     return;
 }
 
 /*  arrumar
  */
-void receivedMessage(int socketClient)
-{
+std::string receiveMessage(int socketClient) {
     int received;
     char reply[256];
 
-    while(received != -1)
-    {
+    while(received != -1) {
         received = recv(socketClient, reply, 256, 0);
         reply[received] = '\0';
-        std::cout << "Resposta: " << reply << std::endl;
     }
 
-    return;
+    std::string stringReply = reply;
+    return stringReply;
 }
 
-int main()
-{
-    int socketClient = initializeSocket();
-    startConnection(socketClient, 18120, "127.0.0.1");
-    sendMessage(socketClient);
-}
+// int main()
+// {
+//     int socketClient = initializeSocket();
+//     startConnection(socketClient, 18120, "127.0.0.1");
+//     sendMessage(socketClient);
+// }

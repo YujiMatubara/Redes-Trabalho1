@@ -13,11 +13,7 @@
 #include <mutex>
 #include <unordered_map>
 
-class Client{
-    private:
-
-
-    public:
-
-
-};
+int initializeSocket();
+int startConnection(int socketClient, int port, const char ip[15]);
+void sendMessage(int socketClient, const char * message);
+std::string receiveMessage(int socketClient);// fim mutex lock

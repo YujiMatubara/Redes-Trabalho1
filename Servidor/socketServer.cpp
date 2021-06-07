@@ -16,12 +16,23 @@ void Server::deleteOldThreads(){
     }
 }
 
+
+std::string Server::preGameStart(){
+   return "tamoBemzao"; 
+};
+std::string Server::onGame(){
+    return "tamoMalzinho";
+};
+
+
+
 void Server::treatMessages(char *msgClient,int readSize,int socket){
     mtx.lock();
-    
+
     std::cout << "Foi\n";
     msgClient[readSize] = '\0'; 
-    write(socket, msgClient, strlen(msgClient));
+    std::string toWrite =  ((*this).*(serverPhases[gamePhase))();
+    write(socket, toWrite.c_str(), strlen(toWrite.c_str()));
     memset(msgClient, 0, MSG_SIZE);
     mtx.unlock();
 }
@@ -151,6 +162,7 @@ void Server::closeServer(player * activePlayers) {
 void Server::initializeServer(int maxPlayers,int serverPort){
     this->maxPlayers = maxPlayers;
     this->serverPort = serverPort;  
+    gamePhase = "preGameStart";
 
     startGame = true; 
    
