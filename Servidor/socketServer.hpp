@@ -11,39 +11,39 @@
 #include <string>
 #include <thread>
 //#include <pthread.h>
-#include <vector> 
+#include <vector>
 #include <mutex>
 #include <unordered_map>
 
 class Server{
     private:
+        bool gameRunning;
         int socketServer;
         struct sockaddr_in addr;
-        int nbClients;
         std::unordered_map<long,player> activePlayers;
-        int playersNo;
         int serverPort;
         int curClientsNo;
         std::unordered_map<long,std::thread> threads;
-        struct sockaddr_storage serverStorage;
         std::vector<long> toDelThreads;
-        socklen_t addrSize;
         std::mutex mtx;
         int maxPlayers;
         long threadId;
+        bool startGame;
 
     public:
         Server(int,int);
         Server();
-        void* connectionHandler(int,int);
-        void sendMsg(player*,char*);
+        void* connectionHandler(int);
+        void createThread(int);
+        void acceptPlayer(int);
         void setAddr();
         bool validateValue(int,std::string);
-        void listener(player*);
         int setServerSocket();
         int awaitPlayersConnection();
         void deleteOldThreads();
         void closeServer(player*);
         void initializeServer(int,int);
-
+        void endingThread(int,int,int);
+        void treatMessages(char*,int,int);
+        int msgSize(int);
 };

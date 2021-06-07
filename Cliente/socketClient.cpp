@@ -1,93 +1,87 @@
-#include <sys/types.h>
-#include <unistd.h>
-#include <sys/socket.h>
-#include <netdb.h>
-#include <arpa/inet.h>
-#include <string.h>
-#include <iostream>
-#include <string>
-#include <pthread.h>
-#include <vector>
+#include "socketClient.hpp"
 
-int meu_socket;
-pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
-struct sockaddr_in addr;
-void *sendmessage(void *);
-void *listener(void *);
-int done = 1;
+// struct sockaddr_in{ //dados do host para comunicacao
+//     short int sin_family;
+//     unsigned short int sin_port;
+//     struct in_addr sin_addr;
+//     unsigned char sin_zero[8];
+// }
 
-int main()
+/*  inicializa o socket do servidor
+ *  retorno:
+ *  retorna o socket caso valido
+ *  retorna -1 em caso de erro
+ */
+int initializeSocket(){
+    int socketClient;
+    socketClient = socket(AF_INET, SOCK_STREAM, 0); //cri socket com: familia do servidor, utiliza o metodo TCP, protocolo IP internet
+    if (socketClient == -1) //erro
+    {
+        std::cerr << "Socket nao pode ser criado" << std::endl;
+        return -1;
+    }
+
+    return socketClient;
+}
+
+/*  inicializa a conexao com o servidor
+ *  retorno:
+ *  retorna 0 caso valido
+ *  retorna -1 em caso de erro
+ */
+int startConnection(int socketClient, int port, const char ip[15])
 {
-
-    meu_socket = socket(AF_INET, SOCK_STREAM, 0);
-
-    if (meu_socket == -1)
+    struct sockaddr_in host;
+    host.sin_family = AF_INET;  //familia de protocolo: ARPA INTERNET
+    host.sin_port = htons(port);   //porta do servidor
+    host.sin_addr.s_addr = inet_addr(ip);   //ip do servidor
+    memset(&host.sin_zero, 0, sizeof(host.sin_zero));   //preencher o sin_zero com 0
+    if (connect(socketClient, (struct sockaddr*)&host, sizeof(host)) == -1) //conecta com o servidor
     {
-        printf("Erro ao criar o socket!\n");
-        return 1;
+        std::cerr << "Não foi possível conectar-se ao servidor." << std::endl;
+        return -1;  //erro
     }
-
-    addr.sin_family = AF_INET;
-    addr.sin_port = htons(18120);
-    addr.sin_addr.s_addr = inet_addr("127.0.0.1");
-
-    memset(&addr.sin_zero, 0, sizeof(addr.sin_zero));
-
-    printf("Tentando se conectar ao servidor...\n");
-
-    if (connect(meu_socket, (struct sockaddr *)&addr, sizeof(addr)) == -1)
-    {
-        printf("Erro ao se conectar!\n");
-        return 1;
-    }
-
-    printf("Conectado!\n\n");
-
-    pthread_t threads[2];
-    void *status;
-    pthread_attr_t attr;
-    pthread_attr_init(&attr);
-    pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
-
-    pthread_create(&threads[0], &attr, sendmessage, NULL);
-    pthread_create(&threads[1], &attr, listener, NULL);
-
-    while (done)
-    {
-    }
-
     return 0;
 }
 
-void *sendmessage(void *)
+/*  arrumar
+ */
+void sendMessage(int socketClient)
 {
-    int enviados;
-    char mensagem[256];
-
-    do
+    int sended = 0;
+    char message[256];
+    while (strcmp(message, "exit") != 0)
     {
-        printf("Cliente: ");
-        fgets(mensagem, 256, stdin);
-        mensagem[strlen(mensagem) - 1] = '\0';
-        enviados = send(meu_socket, mensagem, strlen(mensagem), 0);
+        std::cout << "Escreva a mensagem que deseja enviar." << std::endl;
+        fgets(message, strlen(message), stdin);
+        message[strlen(message)-1] = '\0';
+        sended = send(socketClient, message, strlen(message), 0);
+    }
+    std::cout << "Mensagem: " << sended << std::endl;
 
-    } while (strcmp(mensagem, "exit") != 0);
-
-    pthread_mutex_destroy(&lock);
-    pthread_exit(NULL);
-    close(meu_socket);
-    done = 0;
+    return;
 }
 
-void *listener(void *)
+/*  arrumar
+ */
+void receivedMessage(int socketClient)
 {
-    int recebidos;
-    char resposta[256];
-    do
-    {
-        recebidos = recv(meu_socket, resposta, 256, 0);
-        resposta[recebidos] = '\0';
-        printf("\n Servidor: %s\n", resposta);
+    int received;
+    char reply[256];
 
-    } while (recebidos != -1);
+    while(received != -1)
+    {
+        received = recv(socketClient, reply, 256, 0);
+        reply[received] = '\0';
+        std::cout << "Resposta: " << reply << std::endl;
+    }
+
+    return;
+}
+
+int main()
+{
+    int socketClient = initializeSocket();
+    startConnection(socketClient, 18120, "127.0.0.1");
+    sendMessage(socketClient);
 }

@@ -1,39 +1,34 @@
-/* funcoes
- * if pontos == 12 show:vencedor
- * 
+/* 
+    Presidente
  * Algumas regras:
- * Sequência da maior para a menor: 3 2 A K J Q 7 6 5 4 (de todos os naipes)
- * Mão: A mão (como se fosse uma rodada) vale 1 ponto. Pode ser aumentada para 3, 6, 9 e 12
- * Jogo termina em 12 pontos
- * É possível aumentar a aposta da rodada de 3 em três. Uma dupla pede 3, a outra pode pedir 6, a primeira pede 9 e a segunda pede 12
- * Mão de Onze: Se a dupla tiver 11 pontos, eles podem olhar as mãos uns dos outros
- * Mão de Ferro: Caso ambas as duplas tenham 11 pontos, todos recebem as cartas viradas e devem jogar assim
- * É permitido esconder a carta que você joga na mesa, exceto na primeira mão de cada rodada]
- * No final da distribuição das cartas, vira-se uma carta para cima e a carta que de acordo com a sequência é a próxima, em seus 4 diferentes naipes, são definidas como as Manilhas
- * A ordem de “força” obedece o naipe, da seguinte maneira (do maior para o menor): Paus > Copas > Espadas > Ouros
- * 
- * Número de cartas: 40 
- * 3 cartas para cada participante
- * 4 Jogadores
+ *
+ *  Todos os jogadores recebem um monte de cartas, e elas devem ser jogadas de costas, para que os valores sejam
+ * descobertos apenas no momento da jogada. Cada jogador fala uma carta da ordem de ás até réi, e coloca a carta
+ * do topo do monte na mesa. O jogador seguinte fala a próxima carta da sequência, ou ás caso a carta falada antes
+ * seja um rei, e joga uma carta do topo do baralho. Se a carta falada for a mesma que a tirada do topo, todos os
+ * jogadores precisam bater a mão no monte, e aquele que bater por último recebe a pilha de cartas jogadas. Ganha
+ * os jogadores que ficarem sem nenhuma carta antes do último. 
+ *
+ * Número de cartas: 52
+ * As cartas são divididas por igual entre os jogadores
+ * 2 a 6 Jogadores
  */
 
 #include "gameLogicServer.h"
 #include "socketServer.h"
 
-const char cards[] = { '3' , '2', 'A', 'K', 'J', 'Q', '7', '6', '5', '4'}; // ordenadas de mais fortes para menos fortes
-const int endRoundPonts = 12;
+const char cardsSequence[] = { 'A' , '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K'};
 
 std::vector<card> deck;
-std::vector<card> currRoundDeck; // deck usado na rodada (algumas cartas serão removidas conforme elas são dadas aos jogadores)
-char trumpValue; // manilha
-int roundPoints;
-player activePlayers[NB_PLAYERS];
+std::vector<card> currRoundDeck; // cópia do deck usada para a distribuição
+player activePlayers[MAX_PLAYERS];
+int activePlayersNB = MAX_PLAYERS;
 
 // ================ Funções relacionadas ao jogo ================
-// Função que adiciona todas às 40 cartas ao baralho (10 de cada naipe)
+// Função que adiciona todas as cartas ao baralho (13 de cada naipe)
 void createDeck() {
     for (int suit = 0; suit < 4; suit++) {
-        for (int j = 0; j < 10; j++) {
+        for (int j = 0; j < 13; j++) {
             card addToDeck = { suit, cards[j] };
             deck.push_back(addToDeck);
         }
@@ -55,47 +50,68 @@ void suffleDeck() {
     return;
 }
 
-void newRound() {
-    // Seta a pontuação inicial da rodada como 0
-    roundPoints = 0;
+// Função que distribui as cartas aos jogadores
+void giveCards() {
+    // Distribui as cartas até o deck acabar
 
-    // Embaralhar deck
-    suffleDeck();
+    int currPlayer = 0;
+    while(!currRoundDeck.empty()) {
+        
+        // Tira uma carta do final do deck e coloca na mão do jogador
+        card selectedCard = currRoundDeck.back();
+        currRoundDeck.pop_back();
 
-    // Selecionar carta que "foi virada" e será removida da rodada
-    int removedCardSuit = rand() % 4; // 4 naipes possíveis
-    int removedCardIndex = rand() % 10; // 10 valores de carta possíveis
-    card removedCard = { removedCardSuit, cards[removedCardIndex]};
+        activePlayers[currPlayers].hand[activePlayers[currPlayers].cardsInHand++] = selectedCard;
+        currPlayer = (currPlayer+1)%activePlayersNB;
+        printf("Carta %c do náipe %d entregue ao jogador %d\n", selectedCard.value, selectedCard.suit, currPlayer);
+    }
 
-    // Selecionar manilhas da rodada
-    trumpValue = cards[removedCardIndex+1 % 10]; // próxima carta (após a retirada) representa a manilha
-    std::cout << "Manilha definida: " << trumpValue << std::endl;
-
-    currRoundDeck = deck; // com vectores, esse "=" cria uma cópia do vetor
-    currRoundDeck.erase(currRoundDeck.begin() + removedCardIndex); // removendo carta do baralho da rodada
-    
-
-    return;
 }
 
-// Função que dá 3 cartas a um jogador
-void giveCards(card * playerCards) {
-    // Dando 3 cartas ao jogador
-    for (int cardNb = 0; cardNb < 3; cardNb++) {
-        int selectedCardSuit = rand() % 4; // 4 naipes possíveis
-        int valueIndex = rand() % 10;
-        char selectedCardValue = cards[valueIndex]; // 10 valores de carta possíveis
+// O funcionamento principal do jogo ocorre dentro desta etapa
+void newRound() {
+    int currPlayer = 0;
+    std::vector<card> stack;
 
-        card selectedCard = { selectedCardSuit, selectedCardValue };
+    // A partida se repete enquanto tiver pelo menos dois jogadores
+    while(currPlayersNB > 1) {
+        
+        Boolean endedRound = false;
+        // Laço que se repete até que alguém fique com o monte
+        while(!endedRound) {
 
-        // Checa se a carta selecionada existe no vetor, ou seja, ainda pode ser dada para um jogador
-        if (std::find(currRoundDeck.begin(), currRoundDeck.end(), selectedCard) != currRoundDeck.end() ) {
-            playerCards[cardNb] = selectedCard;
-            currRoundDeck.erase(currRoundDeck.begin() + valueIndex); // removendo carta que será dada ao jogador do baralho da rodada
+            if(activePlayers[currPlayer].cardsInHand != 0) {
+                // Se o jogador ainda não ganhou
+
+                /* ================================
+                Pegar a carta escolhida pelo jogador por meio do socket
+                ==================================*/
+
+                // Tira a carta do monte do jogador e coloca na pilha
+                card selectedCard = activePlayers[currPlayers].hand.back();
+                activePlayers[currPlayers].hand.pop_back();
+                activePlayers[currPlayers].cardsInHand--;
+
+
+                /* ================================
+                Atualizar a tela mostrando a selectedCard no topo
+                ==================================*/
+                stack.push_back(selectedCard);
+                
+                /* ================================
+                Obter o jogador que bateu por último ou bateu na carta errada
+                ==================================*/
+                int losingPlayer;
+                // ESSE DO WHILE É PROVISÓRIO, para substituir a escolha do jogador
+                do {
+                    losingPlayer = rand() % activePlayersNB;
+                } while (activePlayers[losingPlayer].cardsInHand == 0);
+            }
+            currPlayer = (currPlayer+1)%activePlayersNB;
         }
-        printf("Carta %c do náipe %d entregue ao jogador\n", selectedCard.value, selectedCard.suit);
+
     }
-} 
+}
 
 // Função que inicia o jogo
 void startGame() {
@@ -104,34 +120,15 @@ void startGame() {
         return;
     }
 
-    // Passo 1: espera conexões dos clientes e verificar se 4 players estão conectados ao servidor
+    // Zera o cardsInHand de todos os jogadores
+    for(int i = 0; i < activePlayersNB; i++) 
+        activePlayers[i].cardsInHand = 0;
+
+    // Espera conexões dos clientes e verificar se 4 players estão conectados ao servidor
     awaitPlayersConnection();
 
-    // Passo 2: formar 2 duplas e informar aos jogadores isso
-    for (int pIndex = 0; pIndex < NB_PLAYERS; pIndex++) {
-        if (pIndex < (int) NB_PLAYERS/2)
-            activePlayers[pIndex].teamID = 0;
-        else
-            activePlayers[pIndex].teamID = 1;
-        printf("Jogador <%d> inserido no time %d\n", activePlayers[pIndex].name, activePlayers[pIndex].teamID);
-    }
-    // falta informar os jogadores sobre as duplas
-
-    // Passo 3: começar 1ª rodada
+    // Monta o deck e inicia a partida
     createDeck();
-    newRound(); // escolhe manilha da rodada e embaralha deck
+    newRound();
 
-    // Passo 4: distribuir cartas aos jogadores e informar sobre a manilha
-    for (int playerIndex = 0; playerIndex < NB_PLAYERS; playerIndex++) {
-        std::cout << "Dando cartas ao jogador " << playerIndex << std::endl;
-        giveCards(activePlayers[playerIndex].cardsInHand);
-
-        // é preciso avisar ao jogadores quais as cartas que ele recebeu
-        // enviar pelo Socket
-
-        // falta avisar aos jogadores sobre a manilha
-    }
-
-
-    // Passo 5: chamar função que aguarda input dos jogadores e gerencia o jogo...
 }
