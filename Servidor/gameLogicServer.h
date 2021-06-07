@@ -10,8 +10,9 @@
 
 void createDeck();
 void suffleDeck();
+void giveCards();
+int lose(); // FUNÇÃO TEMPORÁRIA
 void newRound();
-void giveCards(card * playerCards);
-void startGame();
+int runGame();
 
 #endif

@@ -30,7 +30,7 @@ void Server::treatMessages(char *msgClient,int readSize,int socket){
     mtx.lock();
 
     std::cout << "Foi\n";
-    msgClient[readSize] = '\0'; 
+    wmsgClient[readSize] = '\0'; 
     std::string toWrite =  ((*this).*(serverPhases[gamePhase))();
     write(socket, toWrite.c_str(), strlen(toWrite.c_str()));
     memset(msgClient, 0, MSG_SIZE);

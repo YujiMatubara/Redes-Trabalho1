@@ -125,15 +125,48 @@ char getKeyPress() {
 3) Chamar funcão que espera mensagem do servidor e escuta entradas do usuário
 */
 
+// Função que cria um mapa nao ordenado com os valores recebidos do servidor
+std::unordered_map<std::string, std::string> createMap(int clientSocket) {
+    std::unordered_map<std::string, std::string> messageServer;
+    std::string serverResponse = receiveMessage(clientSocket);
+    //std::string serverResponse ("playerNo#5|lastCardPlayer#A_paus|sla1#sla2|");
+    std::string firstDelimiter ("|");   //delimitadores para a funcao substr
+    std::string secondDelimiter ("#");
+    int pos;    //posicao do delimitador
+    int line;   //posicao inicial da linha, por exemplo: |assss|assssssss neste caso eh a pos dos 'a'
+
+    std::vector<std::string> lineVector;    //criando um vector para dividir pelo primeiro delimitador
+    pos = serverResponse.find(firstDelimiter);  //procura pela primeira ocorrencia do '|'
+    lineVector.push_back(serverResponse.substr(0, pos));    //insere no vetor a primeira linha
+    line = pos+1;   //passa para a proxima linha
+    while(true) {
+        pos = serverResponse.find(firstDelimiter, line);    //procura pelo primeiro delimitador a linha
+        if (pos == std::string::npos)   //para caso encontre o fim da linha
+        {   
+            break;
+        }
+        lineVector.push_back(serverResponse.substr(line, pos - line));  //adiciona no vector a linha
+        line = pos+1;   //passa para a proxima linha
+    }
+
+    for (size_t i = 0; i < lineVector.size(); i++)
+    {
+        pos = lineVector.at(i).find(secondDelimiter);   //pega a posicao do delimitador # no vetor
+        messageServer[lineVector.at(i).substr(0, pos)] = lineVector.at(i).substr(pos + 1, lineVector.at(i).size()); //insere no map
+    }
+
+    return messageServer;
+}
+
 // Função que fica esperando mensagem via socket do servidor indicando início do jogo
 bool waitStartGameSignal(int clientSocket) {
     // o servidor vai enviar o estado do início de jogo
-    std::string serverResponse = receiveMessage(clientSocket); // de início, virá do servidor nbPlayers e playerID
-    std::string delimiter = "|";
     bool ok = true;
 
+    std::unordered_map<std::string, std::string> funcaoYuji = createMap(clientSocket);
+
     //quebrando a resposta do servidor em variaveis separadas
-    std::unordered_map < std::string, std::string > serverRespFiltered = funcaoDoYujiAqui();
+    std::unordered_map < std::string, std::string > serverRespFiltered = createMap(clientSocket, serverRespFiltered);
     mtx.lock(); // mutex para atualizar alguns valores
     if (serverRespFiltered.find("nbPlayers") != serverRespFiltered.end() && serverRespFiltered.find("playerID") != serverRespFiltered.end()) {
         nbPlayers = atoi(serverRespFiltered["nbPlayers"].c_str());

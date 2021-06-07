@@ -20,10 +20,8 @@ typedef struct _card {
     char value;
 } card;
 
-
 typedef struct _player {
-    std::string name;
-    std::vector <struct _card> hand;
+    std::vector <struct _card> deck;
     int cardsInHand;
     int socket;
 } player;

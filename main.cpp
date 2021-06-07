@@ -65,7 +65,7 @@ int main()
     }
     else
     {
-        inet_ntop(AF_INET, &client.sin_addr, host, NI_MAXHOST);
+      t  inet_ntop(AF_INET, &client.sin_addr, host, NI_MAXHOST);
         cout << host << "conectado a" << ntohs(client.sin_port) << endl;
     }
 

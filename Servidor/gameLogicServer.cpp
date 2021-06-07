@@ -15,20 +15,36 @@
  */
 
 #include "gameLogicServer.h"
-#include "socketServer.h"
+#include "gameLogicServer.hpp"
 
-const char cardsSequence[] = { 'A' , '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K'};
+void Game::initializePlayers(std::vector<int> playersSocket){
+    activePlayersNB = playersSocket.size();
+    activePlayers.resize(activePlayersNB);
+    
+    int cardsPerPlayer =  52/activePlayersNB;
+    curDeckSize = cardsPerPlayer*activePlayersNB; 
+    usedDeck.resize(curDeckSize);
+    
+    for(int i = 0;i<curDeckSize;i++) usedDeck.at(i) = deck.at(i);
 
-std::vector<card> deck;
-player activePlayers[MAX_PLAYERS];
-int activePlayersNB = MAX_PLAYERS;
+    giveCards();
+    for(int i = 0; i < activePlayersNB; i++){
+        activePlayers.at(i).socket = playersSocket.at(i);
+        activePlayers.at(i).cardsInHand = cardsPerPlayer;
+    }
+}
 
-// ================ Funções relacionadas ao jogo ================
+
+Game::Game(std::vector<int> playersSocket) {
+    createDeck();
+    initializePlayers(playersSocket);
+}
+
 // Função que adiciona todas as cartas ao baralho (13 de cada naipe)
-void createDeck() {
+void Game::createDeck() {
     for (int suit = 0; suit < 4; suit++) {
         for (int j = 0; j < 13; j++) {
-            card addToDeck = { suit, cards[j] };
+            card addToDeck = { suit, cardsSequence[j] };
             deck.push_back(addToDeck);
         }
     }
@@ -39,45 +55,47 @@ void createDeck() {
 }
 
 // Função que dá suffle no baralho
-void suffleDeck() {
+void Game::shuffleDeck() {
     // Time-based seed
     unsigned seed = std::chrono::system_clock::now().time_since_epoch().count();
 
     // Embaralhando deck
     shuffle(deck.begin(), deck.end(), std::default_random_engine(seed)); //default_random_engine gera números pseudo-randômicos
 
+    printf("Deck embaralhado\n");
     return;
 }
 
 // Função que distribui as cartas aos jogadores
-void giveCards() {
+void Game::giveCards() {
     // Distribui as cartas até o deck acabar
 
     int currPlayer = 0;
-    while(!deck.empty()) {
-        
-        // Tira uma carta do final do deck e coloca na mão do jogador
-        int index = activePlayers[currPlayers].cardsInHand++;
-        activePlayers[currPlayers].hand[index] = deck.back();
-        deck.pop_back();
+    while(!usedDeck.empty()) {
+        // Tira uma carta do final do usedDeck e coloca na mão do jogador
+        activePlayers[currPlayer].cardsInHand++;
+        activePlayers[currPlayer].deck.push_back(usedDeck.back());
+        printf("Distribuiu carta %c para o jogador %d\n", usedDeck.back().value, currPlayer);
+        usedDeck.pop_back();
 
         // Prepara para distribuir a carta para o próximo jogador
         currPlayer = (currPlayer+1)%activePlayersNB;
     }
 
+    printf("Cartas distribuidas\n");
     return;
 }
 
-// Função temporária para emular uma resposta do socket
-int lose() {
-    return rand()%1;
+// Função temporária para emular uma resposta do socket sobre quem bateu por último
+int Game::lose() {
+    return rand()%2;
 }
 
 // O funcionamento principal do jogo ocorre dentro desta etapa
-void newRound() {
+void Server::newRound() {
+    printf("Início do round\n");
     int currPlayer = 0;
-    bool endGame = false
-    std::vector<card> stack;
+    bool endGame = false;
 
     // A partida se repete enquanto ninguém ficar com todas as cartas
     while(!endGame) {
@@ -97,9 +115,10 @@ void newRound() {
             ==================================*/
 
             // Tira a carta do deck do jogador e coloca na pilha
-            stack.push_back(activePlayers[currPlayer].hand.back());
-            activePlayers[currPlayer].hand.pop_back();
+            stack.push_back(activePlayers[currPlayer].deck.back());
+            activePlayers[currPlayer].deck.pop_back();
             activePlayers[currPlayer].cardsInHand--;
+            printf("Jogador %d está com %d cartas restantes\n", currPlayer, activePlayers[currPlayer].cardsInHand);
 
             /* ================================
             Atualizar a tela mostrando a nova carta no topo da pilha
@@ -111,6 +130,7 @@ void newRound() {
 
             // Se alguém bateu por último ou bateu errado
             if(lose()) {
+                printf("Alguém perdeu\n");
                 int losingPlayer; // Armazena o índice do jogador que perdeu
                 /*@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
                 ESSE DO WHILE É PROVISÓRIO, para substituir a escolha do jogador com socket*/
@@ -122,7 +142,7 @@ void newRound() {
                 // O jogador que perde fica com a pilha de cartas
                 activePlayers[losingPlayer].cardsInHand += stack.size();
                 while(!stack.empty()) {
-                    activePlayers[losingPlayer].hand.push_back(stack.back());
+                    activePlayers[losingPlayer].deck.push_back(stack.back());
                     stack.pop_back();
                 }
 
@@ -132,9 +152,11 @@ void newRound() {
                 currPlayer = losingPlayer;
                 
             }
-            else
+            else {
+                printf("Ninguém perdeu\n");
                 // Vai para o próximo jogador
                 currPlayer = (currPlayer+1)%activePlayersNB;
+            }
         }
         else
             // Vai para o próximo jogador
@@ -146,21 +168,28 @@ void newRound() {
 }
 
 // Função que inicia o jogo
-void startGame() {
+int Game::runGame() {
+    /* ========================================================
     if (setServerSocket() != 0) {
         std::cout << "Erro. Jogo não pôde ser inicializado\n";
         return;
     }
+    ======================================================*/
 
     // Zera o cardsInHand de todos os jogadores
     for(int i = 0; i < activePlayersNB; i++) 
         activePlayers[i].cardsInHand = 0;
 
     // Espera conexões dos clientes e verificar se 4 players estão conectados ao servidor
+    /*==========================================================
     awaitPlayersConnection();
+    ===========================================================*/
 
     // Monta o deck e inicia a partida
     createDeck();
+    shuffleDeck();
+    giveCards();
     newRound();
 
+    return 0;
 }
