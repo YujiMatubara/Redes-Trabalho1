@@ -7,6 +7,7 @@
 #include <map>
 #include <cstdio> 
 #include <thread>
+#include <mutex>
 
 // Cores para terminal
 #define RESET   "\033[0m"
