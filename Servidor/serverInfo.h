@@ -2,6 +2,7 @@
 #define SERVER_INFO_H
 
 #include <string>
+#include<pthread.h>
 
 // Naipes: ordenadas de mais fortes para menos fortes
 #define PAUS 0
@@ -18,6 +19,7 @@ typedef struct _card {
     int suit;
     char value;
 } card;
+
 
 typedef struct _player {
     std::string name;
