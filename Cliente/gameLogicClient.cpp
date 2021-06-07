@@ -130,13 +130,18 @@ bool waitStartGameSignal(int clientSocket, int * nbPlayers, std::string & nextCa
     std::string delimiter = "|";
 
     //quebrando a resposta do servidor em variaveis separadas
-    serverResponse.substr(0, "|");
-    int nbPlayers = atoi(serverResponse.substr(0, serverResponse.find(delimiter)));
-    int nextCardName;
-    int nextActivePlayer;
-    //cardsInHand
+    *nbPlayers = std::stoi(serverResponse.substr(0, serverResponse.find(delimiter)));
+    nextCardName = serverResponse.substr(serverResponse.find(delimiter), serverResponse.find(delimiter));
+    serverResponse.at(serverResponse.find(delimiter)) = ' ';
+    *nextActivePlayer = std::stoi(serverResponse.substr(serverResponse.find(delimiter), serverResponse.find(delimiter)));
+    serverResponse.at(serverResponse.find(delimiter)) = ' ';
+    for (int i = 0; i < *nbPlayers; i++)
+    {
+        cardsInHand.push_back(std::stoi(serverResponse.substr(serverResponse.find(delimiter), serverResponse.find(delimiter))));
+        serverResponse.at(serverResponse.find(delimiter)) = ' ';
+    }
     
-    
+    std::cout << *nbPlayers << nextCardName << *nextActivePlayer << cardsInHand.at(0) << cardsInHand.at(1) << std::endl;
 }
 
 void * listen(int clientSocket, int * nbPlayers, std::string & nextCardName, std::vector<int> & cardsInHand) {
