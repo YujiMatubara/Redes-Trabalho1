@@ -3,15 +3,24 @@
 
 #define MSG_SIZE 256
 
+//cria um map com o preGameStart e a rodada
 void Server::changeGamePhase(std::string phase){
     gamePhase = phase; 
     desiredFunct = serverPhases[gamePhase];
 }
 
-
+//comeco do jogo, mostra jogadores se conectando
 void Server::preGameStart(int socket,std::string sentMessage){
-    std::cout <<"Numm = " << activePlayers.size() << std::endl;
-    if(activePlayers.size()>1 && sentMessage.compare("game_start") == 0) {
+    for (auto it = activePlayers.begin(); it != activePlayers.end(); it++) {
+        if (it->second == 0) {
+            activePlayers.erase(it);
+            break;
+        }
+    }
+
+    std::cout <<"Numm = " << activePlayers.size() << std::endl; //mostrando os players no servidor
+    // activePlayers.erase(activePlayers.find(0)); //apaga o socket do servidor
+    if(activePlayers.size()>1 && sentMessage.compare("start_game") == 0) {  //jogo soh comeca se tiver mais de 2 players
         std::cout << "Eh pra comecar\n";
         // Comecar o jogo
         game = new Game(activePlayers);// Precisa da lista de sockets para a instância ser iniciada
@@ -20,39 +29,39 @@ void Server::preGameStart(int socket,std::string sentMessage){
         changeGamePhase("onGame");
         // para cada socket manda o aviso
         // std::string message = "Alow mano broder, o jogo vai começar";
-        for(auto socket : activePlayers) {
-            if (socket.second == 0) continue; // aqui tem algum problema, resolver e remover esse if! -> activePlayersNB está com um jogador a mais
-            printf("Active player socket pair: %d - %d\n", socket.first, socket.second);
-            std::string message = "playerId#" + std::to_string(socket.second)+"|nbPlayers#"+std::to_string(curClientsNo)+"|";
-            write(socket.second, message.c_str(), message.size());
-            // printf("Mensagem de início enviada\n");
+        for(auto socketPair : activePlayers) {  //roda pelos sockets de cada jogador
+            printf("Active player socketPair pair: %d - %d\n", socketPair.first, socketPair.second);    //mostra o id do socket e o socket do jogador
+            std::string message = "playerSocket#" + std::to_string(socketPair.second) + "|playerID#" + std::to_string(socketPair.first)+"|nbPlayers#"+std::to_string(curClientsNo)+"|";    //cria a mensagem do id do jogador e o numero de players conectados
+            write(socketPair.second, message.c_str(), message.size());
+            printf("Mensagem de início enviada\n");
         }
     }
     else {
         std::cout << "Erro foda >>" << sentMessage << "<<\n";
     }
 
-    std::string toSend = "Bobinho";
-    write(socket, toSend.c_str(), toSend.size());
-
-    return; 
+    return;
 }
 
-void Server::onGame(int socket,std::string sentMessage){
-    std::unordered_map<int,std::string> toSendMessages = ((*game).*(gameActions[sentMessage]))(socket);
+//apos conectados os jogadores inicia a rodada
+void Server::onGame(int socket, std::string sentMessage) {
+    std::cout << "Chamou com " << sentMessage << std::endl;
     
+    if (sentMessage == "start_game") return;
+
+    mtx.lock();
+    std::unordered_map<int,std::string> toSendMessages = ((*game).*(gameActions[sentMessage]))(socket); //cria um map com da rodada e o decorrer dela
     std::string message;
     int curSocket;
-    for(auto toSendMessage : toSendMessages){
-        printf("AQUI\n");
+    for(auto toSendMessage : toSendMessages){   //cria no map o par de socket e mensagem enviados
         message = toSendMessage.second;
         curSocket = toSendMessage.first;
         write(curSocket, message.c_str(), message.size());
     }
 
-    std::string toSend = "Bobao";
+    std::string toSend = "Bobao";   //teste
     write(socket, toSend.c_str(), toSend.size());
-
+    mtx.unlock();
 }
 
 void Server::playerLogMessage(int socket,int curThreadId){
@@ -60,25 +69,24 @@ void Server::playerLogMessage(int socket,int curThreadId){
 
     write(socket, message.c_str(), message.size());
 
-    message = "playerId#"+std::to_string(curThreadId)+"|nbPlayers#"+std::to_string(curClientsNo);
+    message = "playerID#"+std::to_string(curThreadId)+"|nbPlayers#"+std::to_string(curClientsNo);
 
     write(socket, message.c_str(), message.size());
 
 }
 
 void Server::gameStartMessage(){
-
     std::string message = "nbPlayers#" + std::to_string(curClientsNo) + "|stdinWrite#Escreva algo só para testar a conexão...\n";
-
 }
 
+//Funcao remove todas as threads criadas durante a execucao do jogo
 void Server::deleteOldThreads(){
     long toDelId;
-    while(!toDelThreads.empty()){
+    while(!toDelThreads.empty()){   //enquanto as threads nao acabarem: retira a thread da pilha e libera
         
         toDelId = toDelThreads.back();
         std::cout << "on it " << toDelId << "\n";
-        threads[toDelId].join();
+        threads[toDelId].join(); 
         std::cout << "Foi top\n";
         threads.erase(toDelId);
        
@@ -87,22 +95,26 @@ void Server::deleteOldThreads(){
     }
 }
 
+//funcao que recebe a mensagem do cliente
 bool Server::continueThread(char *msgClient,int *readSize,int socket){
-    if((*readSize = recv(socket, msgClient, MSG_SIZE , 0)) > 0 ){
-        if(strcmp(msgClient,"quit") == 0){
+    memset(msgClient, 0, strlen(msgClient) * sizeof(char)); //zera a mensagem para colocar conteudo
+    if((*readSize = recv(socket, msgClient, MSG_SIZE , 0)) > 0 ){   //recebe a mensagem
+        if(strcmp(msgClient,"quit") == 0){  //caso a mensagem esteja vazia
             *readSize = 0;
-            return false;
+            return false;   //erro no conteudo da mensagem
         }
-        return true;
+        return true;    //conseguiu receber a mensagem
     }
-    return false;
+    return false;   //erro na funcao de receber mensagem
 }
 
 void Server::treatMessages(char *msgClient,int readSize,int socket){
     std::cout << "Msg nova\n";
     (*this.*desiredFunct)(socket,std::string(msgClient));
+
 }
 
+//caso um jogador saia
 void Server::endingThread(int curThreadId,int readSize,int socket){
     curClientsNo--;
     if(readSize == 0) {
@@ -110,6 +122,13 @@ void Server::endingThread(int curThreadId,int readSize,int socket){
         close(socket);
         printf("Número de clientes = %d\n", curClientsNo);
         fflush(stdout);
+        /*
+        if(gamePhase.compare("onGame")){
+
+        }
+        else{
+
+        }*/
         //matar thread
     }
     else if(readSize == -1) {
@@ -117,10 +136,11 @@ void Server::endingThread(int curThreadId,int readSize,int socket){
         printf("Erro no recv()");
         //matar thread
     }
-    toDelThreads.push_back(curThreadId);
-    std::cout << "Thread(" << curThreadId << ") ended\n";     
+    toDelThreads.push_back(curThreadId);    //retira a thread da pilha
+    std::cout << "Thread(" << curThreadId << ") ended\n";
 }
 
+//trata as mensagens recebidas dos clientes
 void* Server::connectionHandler(int curThreadId) {
     int socket = activePlayers[curThreadId];
     int readSize;
@@ -128,19 +148,19 @@ void* Server::connectionHandler(int curThreadId) {
 
     // playerLogMessage(socket,curThreadId);     
     
+    while(continueThread(msgClient,&readSize,socket)) treatMessages(msgClient,readSize,socket); //enquanto a conexao com o cliente ocorrer, recebe as mensagens
 
-    while(continueThread(msgClient,&readSize,socket)) treatMessages(msgClient,readSize,socket);
-
-    endingThread(curThreadId,readSize,socket);
+    endingThread(curThreadId,readSize,socket);  //caso um jogador saia finaliza a thread
 
     return 0;
 }
 
+//configurando as variaveis do socket do servidor
 void Server::setAddr(){
-    addr.sin_family = AF_INET;
-    addr.sin_port = htons(serverPort);
-    addr.sin_addr.s_addr =  INADDR_ANY;
-    memset(&addr.sin_zero, 0, sizeof(addr.sin_zero));
+    addr.sin_family = AF_INET;  //familia de protocolos
+    addr.sin_port = htons(serverPort);  //porta
+    addr.sin_addr.s_addr =  INADDR_ANY; //ip
+    memset(&addr.sin_zero, 0, sizeof(addr.sin_zero));   //variaveis de 0 para o restante do tamanho
 }
 
 bool Server::validateValue(int value,std::string errorStr){
@@ -152,9 +172,9 @@ bool Server::validateValue(int value,std::string errorStr){
 }
 
 int Server::setServerSocket() {
-    socketServer = socket(AF_INET, SOCK_STREAM, 0);
+    socketServer = socket(AF_INET, SOCK_STREAM, 0); //cria o socket com tcp
 
-    if(!validateValue(socketServer,"Erro ao criar o socket do servidor")) return 1;
+    if(!validateValue(socketServer,"Erro ao criar o socket do servidor")) return 1; //retorna 1 nos casos de erro autoexplicativos
 
     setAddr();
 
@@ -169,6 +189,7 @@ void Server::createThread(int curThreadId){
     threads[curThreadId] = std::thread(&Server::connectionHandler,this,curThreadId);
 }
 
+//quando um jogador se conecta coloca salva a sua thread
 void Server::acceptPlayer(int curThreadId){
     activePlayers[curThreadId] = accept(socketServer, NULL, NULL);
     printf("Aceito player da thread %d -> activePlayers[] = %d\n", curThreadId, activePlayers[curThreadId]);
@@ -178,20 +199,22 @@ int Server::awaitPlayersConnection() {
     while (curClientsNo < maxPlayers){
         printf("Aguardando jogador %d...\n", curClientsNo);
 
-        acceptPlayer(threadId);
+        acceptPlayer(threadId); //novo jogador conectado
 
-
-        deleteOldThreads();
+        deleteOldThreads(); //apaga as que nao serao utiliadas
         
         if(!validateValue(activePlayers[threadId],"Erro na funcao accept()")) return 1;
 
         std::cout << "Cliente conectado (socket fd = " << activePlayers[threadId] << ")!\n";
                 
-        createThread(threadId);
+        createThread(threadId); //cria thread para o jogador
 
         threadId++;
         curClientsNo++;
-
+        /*
+        while(gamePhase.compare("onGame") == 0){
+            deleteOldThreads();
+        }*/
         printf("Número de clientes = %d\n", curClientsNo);
     }
 
@@ -202,14 +225,14 @@ int Server::awaitPlayersConnection() {
 
 void Server::closeServer(player * activePlayers) {
     for (int i = 0; i < maxPlayers; i++)
-        close(activePlayers[i].socket);
+        close(activePlayers[i].socket); //fechando os sockets
     close(socketServer);
 
     return;
 }
 
 void Server::initializeServer(int maxPlayers,int serverPort){
-    this->maxPlayers = maxPlayers;
+    this->maxPlayers = maxPlayers;  //maximo players permitido pelo jogo
     this->serverPort = serverPort;
     changeGamePhase("preGameStart");  
    
@@ -218,9 +241,10 @@ void Server::initializeServer(int maxPlayers,int serverPort){
 }
 
 Server::Server(){
-    Server(6, 18120);
+    Server(6, 18120);   //num players e porta definidos
 }
 
+//funcao que cria o servidor, e conecta os jogadores
 Server::Server(int maxPlayers,int serverPort){
     printf("Testando socket do servidor...\n");
     initializeServer(maxPlayers,serverPort);
@@ -229,9 +253,10 @@ Server::Server(int maxPlayers,int serverPort){
     close(socketServer);
 }
 
+//para compilar:
 //g++ -Wall -std=c++11 -static -pthread -Wl,--whole-archive -lpthread -Wl,--no-whole-archive -o testServerSocket socketServer.cpp
 int main() {
-    Server s;    
+    Server s;
 
     return 0;
 }

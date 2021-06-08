@@ -54,6 +54,7 @@ class Server{
         void onGame(int,std::string);
         void playerLogMessage(int,int);
         void gameStartMessage();
+
     private:
         void (Server::*desiredFunct)(int,std::string);
         
@@ -65,7 +66,5 @@ class Server{
         std::unordered_map<std::string,std::unordered_map<int,std::string>(Game::*)(int)> gameActions{
             {"play_card",&Game::cardPlayed},
             {"slam_table",&Game::cardTapped}
-        };
-
-
+        };    
 };

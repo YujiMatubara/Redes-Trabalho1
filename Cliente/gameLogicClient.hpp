@@ -35,8 +35,11 @@ void * waitStartGameSignal(int);
 char getKeyPress();
 std::unordered_map<std::string, std::string> createMap(int, std::string);
 std::vector<int> splitStringIntoInts(std::string &, std::string);
-int updateGameState(std::unordered_map < std::string, std::string > &);
+bool updateGameState(std::unordered_map < std::string, std::string > &);
 void * listenServer(int);
 void * sendMsg(int);
+void printCardVariationMsg(int);
+
+std::vector<char> cardsSequence = {'A', '2', '3', '4', '5', '6', '7', '8', '9', '0', 'J', 'Q', 'K'};
 
 #endif

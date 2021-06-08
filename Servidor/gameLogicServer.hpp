@@ -34,7 +34,6 @@ class Game {
         std::unordered_map<int,std::string> suitIdToStr = {{0,"paus"},{1,"copas"},{2,"espadas"},{3,"ouros"}};
         std::vector<std::pair<char,std::string>> cardsSequence = {{'A',"Az"}, {'2',"Dois"}, {'3',"Três"}, {'4',"Quatro"}, {'5',"Cinco"}, {'6',"Seis"}, {'7', "Sete"}, {'8', "Oito"}, {'9', "Nove"}, {'0', "Dez"}, {'J', "Valete"}, {'Q', "Rainha"}, {'K', "Rei"}};
         std::vector<_card> deck;
-        std::vector<_card> usedDeck;
         std::list<_card> stack;
         int cardsPerPlayer;
         int curDeckSize;
@@ -55,5 +54,6 @@ class Game {
         std::unordered_map<int,std::string> getAllClientsMessages();
         std::unordered_map<int,std::string> sendEndGameMessage(int);
         std::string getCardName(_card);
+        void makePersonGainCards(int);
 
 };

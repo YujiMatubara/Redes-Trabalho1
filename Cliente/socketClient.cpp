@@ -7,7 +7,7 @@
  */
 int initializeSocket() {
     int socketClient;
-    socketClient = socket(AF_INET, SOCK_STREAM, 0); //cri socket com: familia do servidor, utiliza o metodo TCP, protocolo IP internet
+    socketClient = socket(AF_INET, SOCK_STREAM, 0); //cria socket com: familia do servidor, utiliza o metodo TCP, protocolo IP internet
     if (socketClient == -1) //erro
     {
         std::cerr << "Socket nao pode ser criado" << std::endl;
@@ -39,36 +39,34 @@ int startConnection(int socketClient, int port, const char ip[16]) {
     return 0;
 }
 
-/*  arrumar
+/*  envio de mensagens ao servidor
+ *  coloca a mensagem no parametro message
+ *  em caso de erro printa
  */
 void sendMessage(int socketClient, const char * message) {
     int sended = 0;
     sended = send(socketClient, message, strlen(message), 0);
 
-    if (sended == -1)
+    if (sended == -1)   //se a funcao send deu erro
         printf("Erro no envio da mensagem para o servidor.\n");
 
     return;
 }
 
-/*  arrumar
- */
+/*  recebe as mensagens do servidor
+ *  coloca a mensagem em reply
+ */ 
 std::string receiveMessage(int socketClient) {
     int received;
     char reply[256];
 
-    while(received != -1) {
+    do {    //enquanto a mensagem do servidor nao acabar
         received = recv(socketClient, reply, 256, 0);
+        // std::cout << "bytes recieved = " << received << std::endl;
         reply[received] = '\0';
-    }
+        // printf("Reply = %s\n", reply);
+    } while (received <= 0);
 
-    std::string stringReply = reply;
+    std::string stringReply = reply;    //retorna em string
     return stringReply;
 }
-
-// int main()
-// {
-//     int socketClient = initializeSocket();
-//     startConnection(socketClient, 18120, "127.0.0.1");
-//     sendMessage(socketClient);
-// }

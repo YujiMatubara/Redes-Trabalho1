@@ -6,104 +6,123 @@
 std::map< std::string, std::string> cardDrawings;
 std::mutex mtx;
 bool gameRunning; // flag que verifica se o jogo começou
-int playerID = -1, nbPlayers, nextActivePlayerID; // nextActivePlayerID =  jogador que fará o comando de jogar a carta
-std::string nextCardName; // carta que será jogada nessa rodada
-std::vector<int> nbCardsInHand; // qtd de cartas na mão de cada jogador
-bool threadRun = false;
+int playerID = -1, socketID, nbPlayers, nextActivePlayerID; // nextActivePlayerID =  jogador que fará o comando de jogar a carta
+std::string nextCardName, desiredCard; // carta que será jogada nessa rodada
+std::vector<int> nbCardsInHand, lastNbCardsInHand; // qtd de cartas na mão de cada jogador
+bool threadRun = false; // flag que fala se as threads devem ou não rodar
+int nextCardIndex;
 
 void loadCardDrawings() {
     // Cartas de paus
-    cardDrawings.insert(std::make_pair("A_Paus", "╔═════════╗\n║♣        ║\n║         ║\n║    A    ║\n║         ║\n║        ♣║\n╚═════════╝"));
-    cardDrawings.insert(std::make_pair("2_Paus", "╔═════════╗\n║♣        ║\n║         ║\n║    2    ║\n║         ║\n║        ♣║\n╚═════════╝"));
-    cardDrawings.insert(std::make_pair("3_Paus", "╔═════════╗\n║♣        ║\n║         ║\n║    3    ║\n║         ║\n║        ♣║\n╚═════════╝"));
-    cardDrawings.insert(std::make_pair("4_Paus", "╔═════════╗\n║♣        ║\n║         ║\n║    4    ║\n║         ║\n║        ♣║\n╚═════════╝"));
-    cardDrawings.insert(std::make_pair("5_Paus", "╔═════════╗\n║♣        ║\n║         ║\n║    5    ║\n║         ║\n║        ♣║\n╚═════════╝"));
-    cardDrawings.insert(std::make_pair("6_Paus", "╔═════════╗\n║♣        ║\n║         ║\n║    6    ║\n║         ║\n║        ♣║\n╚═════════╝"));
-    cardDrawings.insert(std::make_pair("7_Paus", "╔═════════╗\n║♣        ║\n║         ║\n║    7    ║\n║         ║\n║        ♣║\n╚═════════╝"));
-    cardDrawings.insert(std::make_pair("8_Paus", "╔═════════╗\n║♣        ║\n║         ║\n║    8    ║\n║         ║\n║        ♣║\n╚═════════╝"));
-    cardDrawings.insert(std::make_pair("9_Paus", "╔═════════╗\n║♣        ║\n║         ║\n║    9    ║\n║         ║\n║        ♣║\n╚═════════╝"));
-    cardDrawings.insert(std::make_pair("10_Paus","╔═════════╗\n║♣        ║\n║         ║\n║    10   ║\n║         ║\n║        ♣║\n╚═════════╝"));
-    cardDrawings.insert(std::make_pair("J_Paus", "╔═════════╗\n║♣        ║\n║         ║\n║    J    ║\n║         ║\n║        ♣║\n╚═════════╝"));
-    cardDrawings.insert(std::make_pair("Q_Paus", "╔═════════╗\n║♣        ║\n║         ║\n║    Q    ║\n║         ║\n║        ♣║\n╚═════════╝"));
-    cardDrawings.insert(std::make_pair("K_Paus", "╔═════════╗\n║♣        ║\n║         ║\n║    K    ║\n║         ║\n║        ♣║\n╚═════════╝"));
+    cardDrawings.insert(std::make_pair("A_paus", "╔═════════╗\n║♣        ║\n║         ║\n║    A    ║\n║         ║\n║        ♣║\n╚═════════╝"));
+    cardDrawings.insert(std::make_pair("2_paus", "╔═════════╗\n║♣        ║\n║         ║\n║    2    ║\n║         ║\n║        ♣║\n╚═════════╝"));
+    cardDrawings.insert(std::make_pair("3_paus", "╔═════════╗\n║♣        ║\n║         ║\n║    3    ║\n║         ║\n║        ♣║\n╚═════════╝"));
+    cardDrawings.insert(std::make_pair("4_paus", "╔═════════╗\n║♣        ║\n║         ║\n║    4    ║\n║         ║\n║        ♣║\n╚═════════╝"));
+    cardDrawings.insert(std::make_pair("5_paus", "╔═════════╗\n║♣        ║\n║         ║\n║    5    ║\n║         ║\n║        ♣║\n╚═════════╝"));
+    cardDrawings.insert(std::make_pair("6_paus", "╔═════════╗\n║♣        ║\n║         ║\n║    6    ║\n║         ║\n║        ♣║\n╚═════════╝"));
+    cardDrawings.insert(std::make_pair("7_paus", "╔═════════╗\n║♣        ║\n║         ║\n║    7    ║\n║         ║\n║        ♣║\n╚═════════╝"));
+    cardDrawings.insert(std::make_pair("8_paus", "╔═════════╗\n║♣        ║\n║         ║\n║    8    ║\n║         ║\n║        ♣║\n╚═════════╝"));
+    cardDrawings.insert(std::make_pair("9_paus", "╔═════════╗\n║♣        ║\n║         ║\n║    9    ║\n║         ║\n║        ♣║\n╚═════════╝"));
+    cardDrawings.insert(std::make_pair("0_paus", "╔═════════╗\n║♣        ║\n║         ║\n║    10   ║\n║         ║\n║        ♣║\n╚═════════╝"));
+    cardDrawings.insert(std::make_pair("J_paus", "╔═════════╗\n║♣        ║\n║         ║\n║    J    ║\n║         ║\n║        ♣║\n╚═════════╝"));
+    cardDrawings.insert(std::make_pair("Q_paus", "╔═════════╗\n║♣        ║\n║         ║\n║    Q    ║\n║         ║\n║        ♣║\n╚═════════╝"));
+    cardDrawings.insert(std::make_pair("K_paus", "╔═════════╗\n║♣        ║\n║         ║\n║    K    ║\n║         ║\n║        ♣║\n╚═════════╝"));
 
     // Cartas de copas
-    cardDrawings.insert(std::make_pair("A_Copas", "╔═════════╗\n║♥        ║\n║         ║\n║    A    ║\n║         ║\n║        ♥║\n╚═════════╝"));
-    cardDrawings.insert(std::make_pair("2_Copas", "╔═════════╗\n║♥        ║\n║         ║\n║    2    ║\n║         ║\n║        ♥║\n╚═════════╝"));
-    cardDrawings.insert(std::make_pair("3_Copas", "╔═════════╗\n║♥        ║\n║         ║\n║    3    ║\n║         ║\n║        ♥║\n╚═════════╝"));
-    cardDrawings.insert(std::make_pair("4_Copas", "╔═════════╗\n║♥        ║\n║         ║\n║    4    ║\n║         ║\n║        ♥║\n╚═════════╝"));
-    cardDrawings.insert(std::make_pair("5_Copas", "╔═════════╗\n║♥        ║\n║         ║\n║    5    ║\n║         ║\n║        ♥║\n╚═════════╝"));
-    cardDrawings.insert(std::make_pair("6_Copas", "╔═════════╗\n║♥        ║\n║         ║\n║    6    ║\n║         ║\n║        ♥║\n╚═════════╝"));
-    cardDrawings.insert(std::make_pair("7_Copas", "╔═════════╗\n║♥        ║\n║         ║\n║    7    ║\n║         ║\n║        ♥║\n╚═════════╝"));
-    cardDrawings.insert(std::make_pair("8_Copas", "╔═════════╗\n║♥        ║\n║         ║\n║    8    ║\n║         ║\n║        ♥║\n╚═════════╝"));
-    cardDrawings.insert(std::make_pair("9_Copas", "╔═════════╗\n║♥        ║\n║         ║\n║    9    ║\n║         ║\n║        ♥║\n╚═════════╝"));
-    cardDrawings.insert(std::make_pair("10_Copas","╔═════════╗\n║♥        ║\n║         ║\n║    10   ║\n║         ║\n║        ♥║\n╚═════════╝"));
-    cardDrawings.insert(std::make_pair("J_Copas", "╔═════════╗\n║♥        ║\n║         ║\n║    J    ║\n║         ║\n║        ♥║\n╚═════════╝"));
-    cardDrawings.insert(std::make_pair("Q_Copas", "╔═════════╗\n║♥        ║\n║         ║\n║    Q    ║\n║         ║\n║        ♥║\n╚═════════╝"));
-    cardDrawings.insert(std::make_pair("K_Copas", "╔═════════╗\n║♥        ║\n║         ║\n║    K    ║\n║         ║\n║        ♥║\n╚═════════╝"));
+    cardDrawings.insert(std::make_pair("A_copas", "╔═════════╗\n║♥        ║\n║         ║\n║    A    ║\n║         ║\n║        ♥║\n╚═════════╝"));
+    cardDrawings.insert(std::make_pair("2_copas", "╔═════════╗\n║♥        ║\n║         ║\n║    2    ║\n║         ║\n║        ♥║\n╚═════════╝"));
+    cardDrawings.insert(std::make_pair("3_copas", "╔═════════╗\n║♥        ║\n║         ║\n║    3    ║\n║         ║\n║        ♥║\n╚═════════╝"));
+    cardDrawings.insert(std::make_pair("4_copas", "╔═════════╗\n║♥        ║\n║         ║\n║    4    ║\n║         ║\n║        ♥║\n╚═════════╝"));
+    cardDrawings.insert(std::make_pair("5_copas", "╔═════════╗\n║♥        ║\n║         ║\n║    5    ║\n║         ║\n║        ♥║\n╚═════════╝"));
+    cardDrawings.insert(std::make_pair("6_copas", "╔═════════╗\n║♥        ║\n║         ║\n║    6    ║\n║         ║\n║        ♥║\n╚═════════╝"));
+    cardDrawings.insert(std::make_pair("7_copas", "╔═════════╗\n║♥        ║\n║         ║\n║    7    ║\n║         ║\n║        ♥║\n╚═════════╝"));
+    cardDrawings.insert(std::make_pair("8_copas", "╔═════════╗\n║♥        ║\n║         ║\n║    8    ║\n║         ║\n║        ♥║\n╚═════════╝"));
+    cardDrawings.insert(std::make_pair("9_copas", "╔═════════╗\n║♥        ║\n║         ║\n║    9    ║\n║         ║\n║        ♥║\n╚═════════╝"));
+    cardDrawings.insert(std::make_pair("0_copas", "╔═════════╗\n║♥        ║\n║         ║\n║    10   ║\n║         ║\n║        ♥║\n╚═════════╝"));
+    cardDrawings.insert(std::make_pair("J_copas", "╔═════════╗\n║♥        ║\n║         ║\n║    J    ║\n║         ║\n║        ♥║\n╚═════════╝"));
+    cardDrawings.insert(std::make_pair("Q_copas", "╔═════════╗\n║♥        ║\n║         ║\n║    Q    ║\n║         ║\n║        ♥║\n╚═════════╝"));
+    cardDrawings.insert(std::make_pair("K_copas", "╔═════════╗\n║♥        ║\n║         ║\n║    K    ║\n║         ║\n║        ♥║\n╚═════════╝"));
 
     // Cartas de espadas
-    cardDrawings.insert(std::make_pair("A_Espadas", "╔═════════╗\n║♠        ║\n║         ║\n║    A    ║\n║         ║\n║        ♠║\n╚═════════╝"));
-    cardDrawings.insert(std::make_pair("2_Espadas", "╔═════════╗\n║♠        ║\n║         ║\n║    2    ║\n║         ║\n║        ♠║\n╚═════════╝"));
-    cardDrawings.insert(std::make_pair("3_Espadas", "╔═════════╗\n║♠        ║\n║         ║\n║    3    ║\n║         ║\n║        ♠║\n╚═════════╝"));
-    cardDrawings.insert(std::make_pair("4_Espadas", "╔═════════╗\n║♠        ║\n║         ║\n║    4    ║\n║         ║\n║        ♠║\n╚═════════╝"));
-    cardDrawings.insert(std::make_pair("5_Espadas", "╔═════════╗\n║♠        ║\n║         ║\n║    5    ║\n║         ║\n║        ♠║\n╚═════════╝"));
-    cardDrawings.insert(std::make_pair("6_Espadas", "╔═════════╗\n║♠        ║\n║         ║\n║    6    ║\n║         ║\n║        ♠║\n╚═════════╝"));
-    cardDrawings.insert(std::make_pair("7_Espadas", "╔═════════╗\n║♠        ║\n║         ║\n║    7    ║\n║         ║\n║        ♠║\n╚═════════╝"));
-    cardDrawings.insert(std::make_pair("8_Espadas", "╔═════════╗\n║♠        ║\n║         ║\n║    8    ║\n║         ║\n║        ♠║\n╚═════════╝"));
-    cardDrawings.insert(std::make_pair("9_Espadas", "╔═════════╗\n║♠        ║\n║         ║\n║    9    ║\n║         ║\n║        ♠║\n╚═════════╝"));
-    cardDrawings.insert(std::make_pair("10_Espadas","╔═════════╗\n║♠        ║\n║         ║\n║    10   ║\n║         ║\n║        ♠║\n╚═════════╝"));
-    cardDrawings.insert(std::make_pair("J_Espadas", "╔═════════╗\n║♠        ║\n║         ║\n║    J    ║\n║         ║\n║        ♠║\n╚═════════╝"));
-    cardDrawings.insert(std::make_pair("Q_Espadas", "╔═════════╗\n║♠        ║\n║         ║\n║    Q    ║\n║         ║\n║        ♠║\n╚═════════╝"));
-    cardDrawings.insert(std::make_pair("K_Espadas", "╔═════════╗\n║♠        ║\n║         ║\n║    K    ║\n║         ║\n║        ♠║\n╚═════════╝"));
+    cardDrawings.insert(std::make_pair("A_espadas", "╔═════════╗\n║♠        ║\n║         ║\n║    A    ║\n║         ║\n║        ♠║\n╚═════════╝"));
+    cardDrawings.insert(std::make_pair("2_espadas", "╔═════════╗\n║♠        ║\n║         ║\n║    2    ║\n║         ║\n║        ♠║\n╚═════════╝"));
+    cardDrawings.insert(std::make_pair("3_espadas", "╔═════════╗\n║♠        ║\n║         ║\n║    3    ║\n║         ║\n║        ♠║\n╚═════════╝"));
+    cardDrawings.insert(std::make_pair("4_espadas", "╔═════════╗\n║♠        ║\n║         ║\n║    4    ║\n║         ║\n║        ♠║\n╚═════════╝"));
+    cardDrawings.insert(std::make_pair("5_espadas", "╔═════════╗\n║♠        ║\n║         ║\n║    5    ║\n║         ║\n║        ♠║\n╚═════════╝"));
+    cardDrawings.insert(std::make_pair("6_espadas", "╔═════════╗\n║♠        ║\n║         ║\n║    6    ║\n║         ║\n║        ♠║\n╚═════════╝"));
+    cardDrawings.insert(std::make_pair("7_espadas", "╔═════════╗\n║♠        ║\n║         ║\n║    7    ║\n║         ║\n║        ♠║\n╚═════════╝"));
+    cardDrawings.insert(std::make_pair("8_espadas", "╔═════════╗\n║♠        ║\n║         ║\n║    8    ║\n║         ║\n║        ♠║\n╚═════════╝"));
+    cardDrawings.insert(std::make_pair("9_espadas", "╔═════════╗\n║♠        ║\n║         ║\n║    9    ║\n║         ║\n║        ♠║\n╚═════════╝"));
+    cardDrawings.insert(std::make_pair("0_espadas", "╔═════════╗\n║♠        ║\n║         ║\n║    10   ║\n║         ║\n║        ♠║\n╚═════════╝"));
+    cardDrawings.insert(std::make_pair("J_espadas", "╔═════════╗\n║♠        ║\n║         ║\n║    J    ║\n║         ║\n║        ♠║\n╚═════════╝"));
+    cardDrawings.insert(std::make_pair("Q_espadas", "╔═════════╗\n║♠        ║\n║         ║\n║    Q    ║\n║         ║\n║        ♠║\n╚═════════╝"));
+    cardDrawings.insert(std::make_pair("K_espadas", "╔═════════╗\n║♠        ║\n║         ║\n║    K    ║\n║         ║\n║        ♠║\n╚═════════╝"));
 
     // Cartas de ouros
-    cardDrawings.insert(std::make_pair("A_Ouros", "╔═════════╗\n║♦        ║\n║         ║\n║    A    ║\n║         ║\n║        ♦║\n╚═════════╝"));
-    cardDrawings.insert(std::make_pair("2_Ouros", "╔═════════╗\n║♦        ║\n║         ║\n║    2    ║\n║         ║\n║        ♦║\n╚═════════╝"));
-    cardDrawings.insert(std::make_pair("3_Ouros", "╔═════════╗\n║♦        ║\n║         ║\n║    3    ║\n║         ║\n║        ♦║\n╚═════════╝"));
-    cardDrawings.insert(std::make_pair("4_Ouros", "╔═════════╗\n║♦        ║\n║         ║\n║    4    ║\n║         ║\n║        ♦║\n╚═════════╝"));
-    cardDrawings.insert(std::make_pair("5_Ouros", "╔═════════╗\n║♦        ║\n║         ║\n║    5    ║\n║         ║\n║        ♦║\n╚═════════╝"));
-    cardDrawings.insert(std::make_pair("6_Ouros", "╔═════════╗\n║♦        ║\n║         ║\n║    6    ║\n║         ║\n║        ♦║\n╚═════════╝"));
-    cardDrawings.insert(std::make_pair("7_Ouros", "╔═════════╗\n║♦        ║\n║         ║\n║    7    ║\n║         ║\n║        ♦║\n╚═════════╝"));
-    cardDrawings.insert(std::make_pair("8_Ouros", "╔═════════╗\n║♦        ║\n║         ║\n║    8    ║\n║         ║\n║        ♦║\n╚═════════╝"));
-    cardDrawings.insert(std::make_pair("9_Ouros", "╔═════════╗\n║♦        ║\n║         ║\n║    9    ║\n║         ║\n║        ♦║\n╚═════════╝"));
-    cardDrawings.insert(std::make_pair("10_Ouros","╔═════════╗\n║♦        ║\n║         ║\n║    10   ║\n║         ║\n║        ♦║\n╚═════════╝"));
-    cardDrawings.insert(std::make_pair("J_Ouros", "╔═════════╗\n║♦        ║\n║         ║\n║    J    ║\n║         ║\n║        ♦║\n╚═════════╝"));
-    cardDrawings.insert(std::make_pair("Q_Ouros", "╔═════════╗\n║♦        ║\n║         ║\n║    Q    ║\n║         ║\n║        ♦║\n╚═════════╝"));
-    cardDrawings.insert(std::make_pair("K_Ouros", "╔═════════╗\n║♦        ║\n║         ║\n║    K    ║\n║         ║\n║        ♦║\n╚═════════╝"));
+    cardDrawings.insert(std::make_pair("A_ouros", "╔═════════╗\n║♦        ║\n║         ║\n║    A    ║\n║         ║\n║        ♦║\n╚═════════╝"));
+    cardDrawings.insert(std::make_pair("2_ouros", "╔═════════╗\n║♦        ║\n║         ║\n║    2    ║\n║         ║\n║        ♦║\n╚═════════╝"));
+    cardDrawings.insert(std::make_pair("3_ouros", "╔═════════╗\n║♦        ║\n║         ║\n║    3    ║\n║         ║\n║        ♦║\n╚═════════╝"));
+    cardDrawings.insert(std::make_pair("4_ouros", "╔═════════╗\n║♦        ║\n║         ║\n║    4    ║\n║         ║\n║        ♦║\n╚═════════╝"));
+    cardDrawings.insert(std::make_pair("5_ouros", "╔═════════╗\n║♦        ║\n║         ║\n║    5    ║\n║         ║\n║        ♦║\n╚═════════╝"));
+    cardDrawings.insert(std::make_pair("6_ouros", "╔═════════╗\n║♦        ║\n║         ║\n║    6    ║\n║         ║\n║        ♦║\n╚═════════╝"));
+    cardDrawings.insert(std::make_pair("7_ouros", "╔═════════╗\n║♦        ║\n║         ║\n║    7    ║\n║         ║\n║        ♦║\n╚═════════╝"));
+    cardDrawings.insert(std::make_pair("8_ouros", "╔═════════╗\n║♦        ║\n║         ║\n║    8    ║\n║         ║\n║        ♦║\n╚═════════╝"));
+    cardDrawings.insert(std::make_pair("9_ouros", "╔═════════╗\n║♦        ║\n║         ║\n║    9    ║\n║         ║\n║        ♦║\n╚═════════╝"));
+    cardDrawings.insert(std::make_pair("0_ouros", "╔═════════╗\n║♦        ║\n║         ║\n║    10   ║\n║         ║\n║        ♦║\n╚═════════╝"));
+    cardDrawings.insert(std::make_pair("J_ouros", "╔═════════╗\n║♦        ║\n║         ║\n║    J    ║\n║         ║\n║        ♦║\n╚═════════╝"));
+    cardDrawings.insert(std::make_pair("Q_ouros", "╔═════════╗\n║♦        ║\n║         ║\n║    Q    ║\n║         ║\n║        ♦║\n╚═════════╝"));
+    cardDrawings.insert(std::make_pair("K_ouros", "╔═════════╗\n║♦        ║\n║         ║\n║    K    ║\n║         ║\n║        ♦║\n╚═════════╝"));
 
 return;
+}
+
+void printCardVariationMsg(int currPlayer) {
+    if (nbCardsInHand[currPlayer] > lastNbCardsInHand[currPlayer]) {
+        std::cout << RED << "++++++ " << nbCardsInHand[currPlayer] - lastNbCardsInHand[currPlayer] << " ++++++" << RESET << std::endl;
+    }
+    else if (nbCardsInHand[currPlayer] < lastNbCardsInHand[currPlayer]) {
+        std::cout << GREEN << "------ " << lastNbCardsInHand[currPlayer] - nbCardsInHand[currPlayer] << " ------" << RESET << std::endl;
+    }
+
+    return;
 }
 
 // Função que mostra todos os elementos do jogo na tela do cliente (nº de cartas do jogador, carta atual na mesa etc.)
 void showScreenElements() {
     // "Limpa" a tela
-    for (int n = 0; n < 4; n++)
-        printf("\n\n\n\n\n\n\n\n\n\n");
+    // for (int n = 0; n < 4; n++)
+    //     printf("\n\n\n\n\n\n\n\n");
     printf(" ================================ TAPÃO ================================ \n\n");
-    printf("[ JOGADOR %d ]\n\n", playerID);
+    printf("[ PlayerID = %d - socketID = %d ]\n\n", playerID, socketID);  //jogador da vez
+
+    printCardVariationMsg(playerID); // printa mensagem caso tenha ocorrido variação na qtd. de cartas na mão do jogador
     
     printf("\nNúmero de jogadores: %d\n", nbPlayers);
     for (int i = 0; i < nbPlayers; i++) {
         if (i == playerID)
-            std::cout << YELLOW << "[VOCÊ]";
+            std::cout << YELLOW << "[VOCÊ]";    //se for voce
         
-        printf("\tJogador %3d: %3d cartas na mão", i, nbCardsInHand[i]);
+        printf("\t%3dº jogador: %3d cartas na mão", i+1, nbCardsInHand[i]); //cartas
         
         if (nextActivePlayerID == i)
-            std::cout << RED << " <= jogador da vez" << RESET;
+            std::cout << RED << " <= jogador da vez" << RESET;  //se for outro player
         
         printf("\n");
         
         if (i == playerID)
             std::cout << RESET;
     }
-    printf("\n\n");
+
+    std::cout << BLUE;
+    if (desiredCard == "0")
+        desiredCard = "10";
+    printf("\nCarta esperada: %s\n", desiredCard.c_str());
+    std::cout << RESET;
     
     std::string currCard = cardDrawings[nextCardName];
     std::cout << currCard << std::endl;
-    printf("\n\n");
-
+    printf("\n");
+    printf("Próximo comando:\n");
 }
 
 // Função que espera input do usuário (só 2 comandos/chars são aceitos)
@@ -116,7 +135,7 @@ char getKeyPress() {
         if (pressedKey == 10) {
             break;
         }
-        else if (pressedKey == 'x' || pressedKey == 'q') {
+        else if (pressedKey == 'x' || pressedKey == 'q' || pressedKey == 's') {
             std::cin.get(); // pega o ENTER depois dos caracters (ou EOF se o primeiro char já for um ENTER)
             break;    
         } 
@@ -145,7 +164,7 @@ std::unordered_map<std::string, std::string> createMap(int clientSocket, std::st
     line = pos+1; //passa para a proxima linha
     while(true) {
         pos = serverResponse.find(firstDelimiter, line);    //procura pelo primeiro delimitador a linha
-        if (pos == std::string::npos)   //para caso encontre o fim da linha
+        if (pos == -1)   //para caso encontre o fim da linha
             break;
         lineVector.push_back(serverResponse.substr(line, pos - line));  //adiciona no vector a linha
         line = pos+1;   //passa para a proxima linha
@@ -163,21 +182,25 @@ std::unordered_map<std::string, std::string> createMap(int clientSocket, std::st
 // Função que fica esperando mensagem via socket do servidor indicando início do jogo
 void * waitStartGameSignal(int clientSocket) {
     // o servidor vai enviar o estado do início de jogo
+    printf("Aguardando mensagem\n");
     std::string serverResponse = receiveMessage(clientSocket);
+    printf("Mensagem recebida: %s\n", serverResponse.c_str());
     // std::string serverResponse ("nbPlayers#5|nextCardName#A_paus|playerID#1|nextActivePlayerID#2|nextCardName#A_paus|nextActivePlayerID#2|nbCardsInHand#10,3,4,5,6|");
 
     //quebrando a resposta do servidor em variaveis separadas
     std::unordered_map < std::string, std::string > serverRespFiltered = createMap(clientSocket, serverResponse);
-    for (auto & x : serverRespFiltered) {
-        std::cout << "map[" << x.first << "] = " << x.second << std::endl;
-    }
+    // for (auto & x : serverRespFiltered) {   //printar o map
+    //     std::cout << "map[" << x.first << "] = " << x.second << std::endl;
+    // }
     
     mtx.lock(); // mutex para atualizar alguns valores
-    if (serverRespFiltered.find("nbPlayers") != serverRespFiltered.end() && serverRespFiltered.find("playerID") != serverRespFiltered.end()) {
-        nbPlayers = atoi(serverRespFiltered["nbPlayers"].c_str());
-        playerID = atoi(serverRespFiltered["playerID"].c_str());
+    if (serverRespFiltered.find("playerSocket") != serverRespFiltered.end() && serverRespFiltered.find("nbPlayers") != serverRespFiltered.end() && serverRespFiltered.find("playerID") != serverRespFiltered.end()) {
+        nbPlayers = atoi(serverRespFiltered["nbPlayers"].c_str());  //nbplayers esta como string
+        playerID = atoi(serverRespFiltered["playerID"].c_str());    //playerid esta como string
+        socketID = atoi(serverRespFiltered["playerSocket"].c_str());
+        // updateGameState(serverRespFiltered);
         gameRunning = true;
-        printf("Game irá começar. gameRunning = true\n");
+        printf("Game irá começar -> gameRunning = true\n");
     }
     else {
         printf("ERRO ao setar nº de jogadores e playerID ao iniciar o jogo\n");
@@ -185,20 +208,20 @@ void * waitStartGameSignal(int clientSocket) {
     mtx.unlock();
 
     return 0;
-
 }
 
 // Função que splita uma string em vários ints a partir de um delimitador
 std::vector<int> splitStringIntoInts(std::string & stringNbCardsInHand, std::string delimiter) {
     std::vector<int> nbCardsInHand;
+    printf("string nb cards in had: %s\n", stringNbCardsInHand.c_str());
 
     int start = 0;
     int end = stringNbCardsInHand.find(delimiter);
     while (end != -1) {
         // std::cout << stringNbCardsInHand.substr(start, end - start) << std::endl;
-        nbCardsInHand.push_back(atoi(stringNbCardsInHand.substr(start, end - start).c_str()));
-        start = end + delimiter.size();
-        end = stringNbCardsInHand.find(delimiter, start);
+        nbCardsInHand.push_back(atoi(stringNbCardsInHand.substr(start, end - start).c_str()));  //transforma a carta em numero e coloca no vector
+        start = end + delimiter.size(); //pegar o inicio da linha
+        end = stringNbCardsInHand.find(delimiter, start);   //pegar o final da linha
     }
     nbCardsInHand.push_back(atoi(stringNbCardsInHand.substr(start, stringNbCardsInHand.size() - start).c_str())); // último elemento, sem delimitador após ele
 
@@ -208,63 +231,99 @@ std::vector<int> splitStringIntoInts(std::string & stringNbCardsInHand, std::str
 // Função que atualiza as variáveis relacionadas ao estado atual do jogo
 // Ao atualizar o estado do jogo, atualiza a interface
 // Obs.: SEMPRE USAR MUTEX AO CHAMAR ESSA FUNÇÃO!
-int updateGameState(std::unordered_map < std::string, std::string > & serverRespFiltered) {
+bool updateGameState(std::unordered_map < std::string, std::string > & serverRespFiltered) {
     bool ok = true;
 
-    if (serverRespFiltered.find("nbPlayers") != serverRespFiltered.end())
-        nbPlayers = atoi(serverRespFiltered["nbPlayers"].c_str());
+    if (serverRespFiltered.find("nbPlayers") != serverRespFiltered.end()) { //checa se a mensagem foi corretamente recebida
+        nbPlayers = atoi(serverRespFiltered["nbPlayers"].c_str());  //recebe valor em inteiro
+        printf("atualizando nbPlayers -> %d\n", nbPlayers); //printa valor
+    }
     else
-        ok = false; // valor não pôde ser atualizado, algo está errado
+        ok = false; // valor não pôde ser atualizado, algo pode estar errado
     
     if (serverRespFiltered.find("nbCardsInHand") != serverRespFiltered.end()) {
         std::string stringNbCardsInHand = serverRespFiltered["nbCardsInHand"];
+        lastNbCardsInHand = nbCardsInHand;
         nbCardsInHand = splitStringIntoInts(stringNbCardsInHand, ",");
+        printf("atualizando nbCardsInHand\n");
     }
     else
         ok = false;
 
-    if (serverRespFiltered.find("nextCardName") != serverRespFiltered.end())
+    if (serverRespFiltered.find("nextCardName") != serverRespFiltered.end()) {
         nextCardName = serverRespFiltered["nextCardName"];
+        printf("atualizando nextCardName -> %s\n", nextCardName.c_str());
+    }
     else
         ok = false;
 
-    if (serverRespFiltered.find("nextActivePlayerID") != serverRespFiltered.end())
+    if (serverRespFiltered.find("nextActivePlayerID") != serverRespFiltered.end()) {
         nextActivePlayerID = atoi(serverRespFiltered["nextActivePlayerID"].c_str());
+        printf("atualizando nextActivePlayerID -> %d\n", nextActivePlayerID);
+    }
     else
         ok = false;
     
-    showScreenElements(); // atualiza a tela para o usuário
+    if (serverRespFiltered.find("desiredCardID") != serverRespFiltered.end()) {
+        desiredCard = serverRespFiltered["desiredCardID"];
+        printf("atualizando nbPlayers -> %d\n", nbPlayers);
+    }
+    else
+        ok = false;
+    
+    if (serverRespFiltered.find("playerID") != serverRespFiltered.end()) {
+        playerID = atoi(serverRespFiltered["playerID"].c_str());
+        printf("atualizando playerID -> %d\n", playerID);
+    }
+    else
+        ok = false;
+    
+    if (serverRespFiltered.find("playerSocket") != serverRespFiltered.end()) {
+        socketID = atoi(serverRespFiltered["playerSocket"].c_str());
+        printf("atualizando playerID -> %d\n", socketID);
+    }
+    else
+        ok = false;
 
     return ok;
 }
 
+// Funcao do socket que escuta o servidor
 void * listenServer(int clientSocket) {
-    while (threadRun) {
-        // chama função do socket que escuta servidor
-        std::string serverResponse = receiveMessage(clientSocket);
-        std::unordered_map < std::string, std::string > serverRespFiltered = createMap(clientSocket, serverResponse);
+    while (threadRun) { //enquanto a thread estiver ativa
+        if (!threadRun) break;
+
+        std::string serverResponse = receiveMessage(clientSocket);  //captura a mensagem do servidor pela funcao do socketClient
+        std::unordered_map < std::string, std::string > serverRespFiltered = createMap(clientSocket, serverResponse);   //cria um map que splita os valores do jogo recebidos
 
         if (serverRespFiltered.find("endGame") != serverRespFiltered.end()) { // se no map enviado pelo servidor há um endGame, o jogo finalizou
             gameRunning = false;
-            printf("\n\n\n\n\n\n\n\n\n%s\n", serverRespFiltered["endGame"].c_str()); // mensagem de fim de jogo
-            return 0;
+            printf("\n\n\n\n\n\n%s\n", serverRespFiltered["endGame"].c_str()); // mensagem de fim de jogo
+            break;
         }
         
         // atualiza "nbPlayers|nextCardName|nextActivePlayerID|nbCardsInHand_Player0|nbCardsInHand_Player1|...|nbCardsInHand_PlayerN"
         mtx.lock(); // mutex aqui para atualizar os valores
-        if (!updateGameState(serverRespFiltered)) {
-            std::cout << "ERRO ao atualizar as variáveis de estado do servidor\n";
-        }
+        updateGameState(serverRespFiltered);
+        // std::cout << "ERRO ao atualizar as variáveis de estado do servidor\n";
         mtx.unlock();
-        sleep(0.3);
+        
+        showScreenElements(); // atualiza a tela para o usuário
+        sleep(0.3); 
     }
+
+    printf("Matando thread de listenServer()\n");
+    std::terminate();
 
     return 0;
 }
 
 void * sendMsg(int clientSocket) {
     while (threadRun) {
+        if (!threadRun) break;
+
         char keyPressed = getKeyPress();
+        printf("keyPressed = %c\n", keyPressed);
         // chama função que envia mensagem para o socket -> enviar keyPressed
 
         // std::cout << "Tecla pressionada: <" << keyPressed << ">" << std::endl;
@@ -289,16 +348,20 @@ void * sendMsg(int clientSocket) {
                 updateGameState(serverRespFiltered); // atualiza os valores após "bater na mesa"
             }
         }
-        else { // pressionou o 'q'
+        else if (keyPressed == 'q') { // pressionou o 'q'
             sendMessage(clientSocket, "quit");
             gameRunning = false; // game ended
         }
         mtx.unlock();
     }
 
+    printf("Matando thread de sendMsg()\n");
+    std::terminate();
+
     return 0;
 }
 
+//Funcao que executa o jogo no cliente
 int main(int argc, char const *argv[]) {
     gameRunning = false;
 
@@ -328,40 +391,47 @@ int main(int argc, char const *argv[]) {
     printf("\n[*] Pressione ENTER caso queira começar o jogo ou\n");
     printf("[*] Espere um sinal de início de jogo\n");
 
-    threadRun = true; // fala para as threads ficarem rodando
+    threadRun = true; // flag que fala para as threads ficarem rodando
 
-    // Tread 1 => espera mensagem do servidor e vai atualizando as informações do estado do jogo
-    // Se o nextActivePlayerID for o playerID, é permitido que esse cliente envie mensagem para o servidor
-    std::thread listenServerThread( listenServer, clientSocket );
-    
     // Thread 2 => fica esperando entrada do usuário ( getKeyPress() ) e, dependendo do nextActivePlayerID, permite que o usuário envio o comando de baixar carta
     // O comando de bater na mesa está disponível sempre
-    // Se o jogo não tiver começado, o cliente pode enviar um comando de "game_start" para o servidor
+    // Se o jogo não tiver começado, o cliente pode enviar um comando de start_game" para o servidor
     std::thread sendMsgThread( sendMsg, clientSocket );
-
+    
     // Thread 3 => "morre" rápido, só serve para ficar escutando uma mensagem do servidor falando que o jogo iniciou
     std::thread waitStartSignal(waitStartGameSignal, clientSocket);
 
     while (!gameRunning) { if(gameRunning) break; sleep(0.3);}  // espera sinal de começo de jogo ou alguem jogador pressionar ENTER para começar o game
 
-    for (int i = 0; i < nbPlayers; i++) // inicializa cada jogador com 0 cartas (essa informação virá do servidor no futuro)
+    // Tread 1 => espera mensagem do servidor e vai atualizando as informações do estado do jogo
+    // Se o nextActivePlayerID for o playerID, é permitido que esse cliente envie mensagem para o servidor
+    std::thread listenServerThread( listenServer, clientSocket );
+
+    for (int i = 0; i < nbPlayers; i++) { // inicializa cada jogador com 0 cartas (essa informação virá do servidor no futuro)
         nbCardsInHand.push_back(0);
+        lastNbCardsInHand.push_back(0); // mantém um tracking da qtd. de cartas na rodada anterior
+    }
 
      if (playerID == -1) {
         std::cout << "ERRO ao tentar definir o PlayerID.\n";
         return 1;
     }
 
-    printf("[*] O jogo irá começar!!\n");
+    printf("[*] O jogo irá começar!!\nPressione 's' para começar...\n");
 
     loadCardDrawings(); // salva o desenho das cartas em um array
 
-    while (gameRunning) {}
+
+    while (gameRunning) { if(!gameRunning) break; sleep(0.3); }
     
     mtx.lock();
     threadRun = false; // avisa para as threads que elas devem ser finalizadas
     mtx.unlock();
+
+    listenServerThread.join();
+    sendMsgThread.join();
     
+    close(clientSocket);
     printf("[!] Jogo finalizado! Obrigado por participar :)\n");
 
     return 0;
