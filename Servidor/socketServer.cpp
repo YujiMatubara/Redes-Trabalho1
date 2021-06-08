@@ -9,8 +9,10 @@ void Server::changeGamePhase(std::string phase){
 }
 
 
-void Server::preGameStart(int socket, std::string sentMessage){
-    if(sentMessage.compare("start_game") == 0) {
+void Server::preGameStart(int socket,std::string sentMessage){
+    std::cout <<"Numm = " << activePlayers.size() << std::endl;
+    if(activePlayers.size()>1 && sentMessage.compare("game_start") == 0) {
+        std::cout << "Eh pra comecar\n";
         // Comecar o jogo
         game = new Game(activePlayers);// Precisa da lista de sockets para a instância ser iniciada
         //mandar msg pra todo mundo foda foda foda
@@ -37,7 +39,6 @@ void Server::preGameStart(int socket, std::string sentMessage){
 }
 
 void Server::onGame(int socket,std::string sentMessage){
-    
     std::unordered_map<int,std::string> toSendMessages = ((*game).*(gameActions[sentMessage]))(socket);
     
     std::string message;
@@ -51,6 +52,7 @@ void Server::onGame(int socket,std::string sentMessage){
 
     std::string toSend = "Bobao";
     write(socket, toSend.c_str(), toSend.size());
+
 }
 
 void Server::playerLogMessage(int socket,int curThreadId){
@@ -65,11 +67,9 @@ void Server::playerLogMessage(int socket,int curThreadId){
 }
 
 void Server::gameStartMessage(){
-    mtx.lock();
 
     std::string message = "nbPlayers#" + std::to_string(curClientsNo) + "|stdinWrite#Escreva algo só para testar a conexão...\n";
 
-    mtx.unlock();
 }
 
 void Server::deleteOldThreads(){
@@ -99,13 +99,11 @@ bool Server::continueThread(char *msgClient,int *readSize,int socket){
 }
 
 void Server::treatMessages(char *msgClient,int readSize,int socket){
-    mtx.lock();
+    std::cout << "Msg nova\n";
     (*this.*desiredFunct)(socket,std::string(msgClient));
-    mtx.unlock();
 }
 
 void Server::endingThread(int curThreadId,int readSize,int socket){
-    mtx.lock();
     curClientsNo--;
     if(readSize == 0) {
         printf("Cliente desconectado (socket nb %d\n", socket);
@@ -120,7 +118,6 @@ void Server::endingThread(int curThreadId,int readSize,int socket){
         //matar thread
     }
     toDelThreads.push_back(curThreadId);
-    mtx.unlock();
     std::cout << "Thread(" << curThreadId << ") ended\n";     
 }
 
@@ -183,7 +180,6 @@ int Server::awaitPlayersConnection() {
 
         acceptPlayer(threadId);
 
-        mtx.lock();
 
         deleteOldThreads();
         
@@ -197,8 +193,6 @@ int Server::awaitPlayersConnection() {
         curClientsNo++;
 
         printf("Número de clientes = %d\n", curClientsNo);
-
-        mtx.unlock();
     }
 
     while (curClientsNo > 0) { continue; } 

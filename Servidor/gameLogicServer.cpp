@@ -173,8 +173,3 @@ std::unordered_map<int, std::string> Game::sendEndGameMessage(int personId) {
 
     return allMessages;
 }
-
-// int main(void){
-//     std::vector<int> test = {1,4,7,2,5,8};
-//     Game g(test);
-// }
