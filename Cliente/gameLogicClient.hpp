@@ -31,7 +31,7 @@
 
 void loadCardDrawings();
 void showScreenElements();
-bool waitStartGameSignal(int);
+void * waitStartGameSignal(int);
 char getKeyPress();
 std::unordered_map<std::string, std::string> createMap(int, std::string);
 std::vector<int> splitStringIntoInts(std::string &, std::string);

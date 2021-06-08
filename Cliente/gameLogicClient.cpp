@@ -9,6 +9,7 @@ bool gameRunning; // flag que verifica se o jogo começou
 int playerID = -1, nbPlayers, nextActivePlayerID; // nextActivePlayerID =  jogador que fará o comando de jogar a carta
 std::string nextCardName; // carta que será jogada nessa rodada
 std::vector<int> nbCardsInHand; // qtd de cartas na mão de cada jogador
+bool threadRun = false;
 
 void loadCardDrawings() {
     // Cartas de paus
@@ -112,20 +113,20 @@ char getKeyPress() {
     char pressedKey;
     while (1) {
         pressedKey = std::cin.get();
-        if (pressedKey == 10 || pressedKey == 'x' || pressedKey == 'q') {
+        if (pressedKey == 10) {
             break;
         }
-        std::cin.get(); // pega o ENTER depois dos caracters (ou EOF se o primeiro char já for um ENTER)
+        else if (pressedKey == 'x' || pressedKey == 'q') {
+            std::cin.get(); // pega o ENTER depois dos caracters (ou EOF se o primeiro char já for um ENTER)
+            break;    
+        } 
+        else {
+            std::cin.get(); // pega o ENTER depois dos caracters (ou EOF se o primeiro char já for um ENTER)
+        }
     }
 
     return pressedKey;
 }
-
-/* Ordem do que deve ser feito:
-1) Conectar ao servidor -> arquivo "socketClient"
-2) Ficar esperando sinal de início de jogo
-3) Chamar funcão que espera mensagem do servidor e escuta entradas do usuário
-*/
 
 // Função que cria um mapa nao ordenado com os valores recebidos do servidor
 std::unordered_map<std::string, std::string> createMap(int clientSocket, std::string serverResponse) {
@@ -160,10 +161,8 @@ std::unordered_map<std::string, std::string> createMap(int clientSocket, std::st
 }
 
 // Função que fica esperando mensagem via socket do servidor indicando início do jogo
-bool waitStartGameSignal(int clientSocket) {
+void * waitStartGameSignal(int clientSocket) {
     // o servidor vai enviar o estado do início de jogo
-    bool ok = true;
-    
     std::string serverResponse = receiveMessage(clientSocket);
     // std::string serverResponse ("nbPlayers#5|nextCardName#A_paus|playerID#1|nextActivePlayerID#2|nextCardName#A_paus|nextActivePlayerID#2|nbCardsInHand#10,3,4,5,6|");
 
@@ -177,15 +176,14 @@ bool waitStartGameSignal(int clientSocket) {
     if (serverRespFiltered.find("nbPlayers") != serverRespFiltered.end() && serverRespFiltered.find("playerID") != serverRespFiltered.end()) {
         nbPlayers = atoi(serverRespFiltered["nbPlayers"].c_str());
         playerID = atoi(serverRespFiltered["playerID"].c_str());
-
-        ok = true;
+        gameRunning = true;
     }
     else {
-        ok = false;
+        printf("ERRO ao setar nº de jogadores e playerID ao iniciar o jogo\n");
     }
     mtx.unlock();
 
-    return ok;
+    return 0;
 
 }
 
@@ -240,44 +238,61 @@ int updateGameState(std::unordered_map < std::string, std::string > & serverResp
 }
 
 void * listenServer(int clientSocket) {
-    // chama função do socket que escuta servidor
-    std::string serverResponse = receiveMessage(clientSocket);
-    std::unordered_map < std::string, std::string > serverRespFiltered = createMap(clientSocket, serverResponse);
-    
-    // atualiza "nbPlayers|nextCardName|nextActivePlayerID|nbCardsInHand_Player0|nbCardsInHand_Player1|...|nbCardsInHand_PlayerN"
-    mtx.lock(); // mutex aqui para atualizar os valores
-    if (!updateGameState(serverRespFiltered)) {
-        std::cout << "ERRO ao atualizar as variáveis de estado do servidor\n";
+    while (threadRun) {
+        // chama função do socket que escuta servidor
+        std::string serverResponse = receiveMessage(clientSocket);
+        std::unordered_map < std::string, std::string > serverRespFiltered = createMap(clientSocket, serverResponse);
+
+        if (serverRespFiltered.find("endGame") != serverRespFiltered.end()) { // se no map enviado pelo servidor há um endGame, o jogo finalizou
+            gameRunning = false;
+            printf("\n\n\n\n\n\n\n\n\n%s\n", serverRespFiltered["endGame"].c_str()); // mensagem de fim de jogo
+            return 0;
+        }
+        
+        // atualiza "nbPlayers|nextCardName|nextActivePlayerID|nbCardsInHand_Player0|nbCardsInHand_Player1|...|nbCardsInHand_PlayerN"
+        mtx.lock(); // mutex aqui para atualizar os valores
+        if (!updateGameState(serverRespFiltered)) {
+            std::cout << "ERRO ao atualizar as variáveis de estado do servidor\n";
+        }
+        mtx.unlock();
+        sleep(0.3);
     }
-    mtx.unlock();
 
     return 0;
 }
 
 void * sendMsg(int clientSocket) {
-    char keyPressed = getKeyPress();
-    // chama função que envia mensagem para o socket -> enviar keyPressed
-    
-    mtx.lock();
-    if (keyPressed == 10) {// ENTER -> comando para bater na mesa
-        sendMessage(clientSocket, "slam_table");
-        std::string serverResponse = receiveMessage(clientSocket);
-        std::unordered_map < std::string, std::string > serverRespFiltered = createMap(clientSocket, serverResponse);
-        updateGameState(serverRespFiltered); // atualiza os valores após "bater na mesa"
-    }
-    else if (keyPressed == 'x') { // pressionou o 'x' -> comando de baixar carta
-        if (nextActivePlayerID == playerID) { // se o próximo player for o playerID, ele pode enviar o comando de baixar carta
-            sendMessage(clientSocket, "play_card");
-            std::string serverResponse = receiveMessage(clientSocket);
-        std::unordered_map < std::string, std::string > serverRespFiltered = createMap(clientSocket, serverResponse);
-        updateGameState(serverRespFiltered); // atualiza os valores após "bater na mesa"
+    while (threadRun) {
+        char keyPressed = getKeyPress();
+        // chama função que envia mensagem para o socket -> enviar keyPressed
+
+        if (!gameRunning) { // se o jogo não está jogando, pressionar enter começa o jogo
+            if (keyPressed == 10) // só é permitido mandar ENTER para começar o jogo
+                sendMessage(clientSocket, "game_start");
+            continue; // outras entradas não são permitidas
         }
+        
+        mtx.lock();
+        if (keyPressed == 10) {// ENTER -> comando para bater na mesa
+            sendMessage(clientSocket, "slam_table");
+            std::string serverResponse = receiveMessage(clientSocket);
+            std::unordered_map < std::string, std::string > serverRespFiltered = createMap(clientSocket, serverResponse);
+            updateGameState(serverRespFiltered); // atualiza os valores após "bater na mesa"
+        }
+        else if (keyPressed == 'x') { // pressionou o 'x' -> comando de baixar carta
+            if (nextActivePlayerID == playerID) { // se o próximo player for o playerID, ele pode enviar o comando de baixar carta
+                sendMessage(clientSocket, "play_card");
+                std::string serverResponse = receiveMessage(clientSocket);
+                std::unordered_map < std::string, std::string > serverRespFiltered = createMap(clientSocket, serverResponse);
+                updateGameState(serverRespFiltered); // atualiza os valores após "bater na mesa"
+            }
+        }
+        else { // pressionou o 'q'
+            sendMessage(clientSocket, "quit");
+            gameRunning = false; // game ended
+        }
+        mtx.unlock();
     }
-    else { // pressionou o 'q'
-        sendMessage(clientSocket, "quit");
-        gameRunning = false; // game ended
-    }
-    mtx.unlock();
 
     return 0;
 }
@@ -307,14 +322,25 @@ int main(int argc, char const *argv[]) {
         return 1;
     }
     printf("[*] Conectado em %s:%d!\n", serverIP.c_str(), serverPort);
-    printf("[*] Esperando sinal de início de jogo\n");
 
-    while (!gameRunning) {
-        if (waitStartGameSignal(clientSocket) == true) // espera sinal de começo de jogo
-            gameRunning = true;
-        else
-            sleep(1); // da um tempo pra fazer a verificação novamente
-    }
+    printf("\n[*] Pressione ENTER caso queira começar o jogo ou\n");
+    printf("[*] Espere um sinal de início de jogo\n");
+
+    threadRun = true; // fala para as threads ficarem rodando
+
+    // Tread 1 => espera mensagem do servidor e vai atualizando as informações do estado do jogo
+    // Se o nextActivePlayerID for o playerID, é permitido que esse cliente envie mensagem para o servidor
+    std::thread listenServerThread( listenServer, clientSocket );
+    
+    // Thread 2 => fica esperando entrada do usuário ( getKeyPress() ) e, dependendo do nextActivePlayerID, permite que o usuário envio o comando de baixar carta
+    // O comando de bater na mesa está disponível sempre
+    // Se o jogo não tiver começado, o cliente pode enviar um comando de "game_start" para o servidor
+    std::thread sendMsgThread( sendMsg, clientSocket );
+
+    // Thread 3 => "morre" rápido, só serve para ficar escutando uma mensagem do servidor falando que o jogo iniciou
+    std::thread waitStartSignal(waitStartGameSignal, clientSocket);
+
+    while (!gameRunning) {}  // espera sinal de começo de jogo ou alguem jogador pressionar ENTER para começar o game
 
     for (int i = 0; i < nbPlayers; i++) // inicializa cada jogador com 0 cartas (essa informação virá do servidor no futuro)
         nbCardsInHand.push_back(0);
@@ -328,15 +354,11 @@ int main(int argc, char const *argv[]) {
 
     loadCardDrawings(); // salva o desenho das cartas em um array
 
-    // Tread 1 => espera mensagem do servidor e vai atualizando as informações do estado do jogo
-    // Se o nextActivePlayerID for o playerID, é permitido que esse cliente envie mensagem para o servidor
-    std::thread listenServerThread( listenServer, clientSocket );
-    
-    // Thread 2 => fica esperando entrada do usuário ( getKeyPress() ) e, dependendo do nextActivePlayerID, permite que o usuário envio o comando de baixar carta
-    // O comando de bater na mesa está disponível sempre
-    std::thread sendMsgThread( sendMsg, clientSocket );
-
     while (gameRunning) {}
+    
+    mtx.lock();
+    threadRun = false; // avisa para as threads que elas devem ser finalizadas
+    mtx.unlock();
     
     printf("[!] Jogo finalizado! Obrigado por participar :)\n");
 
