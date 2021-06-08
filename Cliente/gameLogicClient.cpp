@@ -266,6 +266,7 @@ void * sendMsg(int clientSocket) {
         char keyPressed = getKeyPress();
         // chama função que envia mensagem para o socket -> enviar keyPressed
 
+        std::cout << "(" << keyPressed << ")" << std::endl;
         if (!gameRunning) { // se o jogo não está jogando, pressionar enter começa o jogo
             if (keyPressed == 10) // só é permitido mandar ENTER para começar o jogo
                 sendMessage(clientSocket, "game_start");
