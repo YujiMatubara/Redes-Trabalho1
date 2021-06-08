@@ -207,6 +207,7 @@ std::vector<int> splitStringIntoInts(std::string & stringNbCardsInHand, std::str
 }
 
 // Função que atualiza as variáveis relacionadas ao estado atual do jogo
+// Ao atualizar o estado do jogo, atualiza a interface
 // Obs.: SEMPRE USAR MUTEX AO CHAMAR ESSA FUNÇÃO!
 int updateGameState(std::unordered_map < std::string, std::string > & serverRespFiltered) {
     bool ok = true;
@@ -232,6 +233,8 @@ int updateGameState(std::unordered_map < std::string, std::string > & serverResp
         nextActivePlayerID = atoi(serverRespFiltered["nextActivePlayerID"].c_str());
     else
         ok = false;
+    
+    showScreenElements(); // atualiza a tela para o usuário
 
     return ok;
 }
