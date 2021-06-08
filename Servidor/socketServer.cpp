@@ -23,7 +23,6 @@ void Server::preGameStart(int socket,std::string sentMessage){
             break;
         }
     }
-    std::cout <<"Numm = " << activePlayers.size() << std::endl; //mostrando os players no servidor
     // activePlayers.erase(activePlayers.find(0)); //apaga o socket do servidor
     if(activePlayers.size()>1 && sentMessage.compare("start_game") == 0) {  //jogo soh comeca se tiver mais de 2 players
         gameRuning = true;
@@ -31,7 +30,6 @@ void Server::preGameStart(int socket,std::string sentMessage){
         gamePlayers = activePlayers.size();
 
 
-        std::cout << "Eh pra comecar\n";
         // Comecar o jogo
         game = new Game(activePlayers);// Precisa da lista de sockets para a instância ser iniciada
         //mandar msg pra todo mundo foda foda foda
@@ -61,6 +59,8 @@ void Server::onGame(int socket, std::string sentMessage) {
 
     mtx.lock();
     std::unordered_map<int,std::string> toSendMessages = ((*game).*(gameActions[sentMessage]))(socket); //cria um map com da rodada e o decorrer dela
+    bool weHaveAWinner =  (toSendMessages[socket].find("endGame#") != std::string::npos);
+    endGame = true;
     std::string message;
     int curSocket;
     for(auto toSendMessage : toSendMessages){   //cria no map o par de socket e mensagem enviados
