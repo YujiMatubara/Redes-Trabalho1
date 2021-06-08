@@ -14,43 +14,61 @@
  * 2 a 6 Jogadores
  */
 
-#include "gameLogicServer.h"
 #include "gameLogicServer.hpp"
 
+#define DECK_SIZE 52 // quantidade de cartas no baralho
+
+#define PAUS 0
+#define COPAS 1
+#define ESPADAS 2
+#define OURO 3
+
+#define MSG_SIZE 256
+
 void Game::initializePlayers(std::vector<int> playersSocket){
+    int curSocket;
+    bool trueVar = true;
     activePlayersNB = playersSocket.size();
-    activePlayers.resize(activePlayersNB);
     
-    int cardsPerPlayer =  52/activePlayersNB;
+    cardsPerPlayer =  52/activePlayersNB;
     curDeckSize = cardsPerPlayer*activePlayersNB; 
     usedDeck.resize(curDeckSize);
     
     for(int i = 0;i<curDeckSize;i++) usedDeck.at(i) = deck.at(i);
 
-    giveCards();
     for(int i = 0; i < activePlayersNB; i++){
-        activePlayers.at(i).socket = playersSocket.at(i);
-        activePlayers.at(i).cardsInHand = cardsPerPlayer;
+        curSocket = playersSocket.at(i);
+        activePlayers[curSocket] = _player{};
+        activePlayers[curSocket].myTurn = !trueVar;
+        activePlayers[curSocket].active = trueVar;
+        activePlayers[curSocket].socket = curSocket;
+        activePlayers[curSocket].cardsInHand = cardsPerPlayer;
     }
+    activePlayers[playersSocket.at(0)].myTurn = true;
+    giveCards();
 }
 
-
-Game::Game(std::vector<int> playersSocket) {
+Game::Game(std::unordered_map<int, int> playersSocketPair) {
+    std::vector<int> playersSocket;
+    for(auto sockets : playersSocketPair){
+        playersSocket.push_back(sockets.second);
+    }
     createDeck();
     initializePlayers(playersSocket);
+    newRound();
 }
 
 // Função que adiciona todas as cartas ao baralho (13 de cada naipe)
 void Game::createDeck() {
     for (int suit = 0; suit < 4; suit++) {
         for (int j = 0; j < 13; j++) {
-            card addToDeck = { suit, cardsSequence[j] };
+            card addToDeck = { suit, cardsSequence[j].first };
             deck.push_back(addToDeck);
         }
     }
-    
     printf("Deck inicializado\n");
 
+    shuffleDeck();
     return;
 }
 
@@ -71,125 +89,94 @@ void Game::giveCards() {
     // Distribui as cartas até o deck acabar
 
     int currPlayer = 0;
-    while(!usedDeck.empty()) {
-        // Tira uma carta do final do usedDeck e coloca na mão do jogador
-        activePlayers[currPlayer].cardsInHand++;
-        activePlayers[currPlayer].deck.push_back(usedDeck.back());
-        printf("Distribuiu carta %c para o jogador %d\n", usedDeck.back().value, currPlayer);
-        usedDeck.pop_back();
-
-        // Prepara para distribuir a carta para o próximo jogador
-        currPlayer = (currPlayer+1)%activePlayersNB;
+    //int val = 3;
+    for (auto personSocket : activePlayers){
+        playersSequence.push_back(personSocket.first);       
+        for(int i=0;i<cardsPerPlayer;i++){
+            personSocket.second.deck.push_back(usedDeck.back());
+            usedDeck.pop_back();
+        }
     }
 
     printf("Cartas distribuidas\n");
     return;
 }
 
-// Função temporária para emular uma resposta do socket sobre quem bateu por último
-int Game::lose() {
-    return rand()%2;
+std::unordered_map<int,std::string> Game::cardPlayed(int personId){
+    desiredCardId = (desiredCardId+1)%(cardsSequence.size());
+    topCard = activePlayers[personId].deck.front();
+    activePlayers[personId].deck.pop_front();
+    stack.push_front(topCard);
+
+
+    activePlayers[personId].cardsInHand --;
+    activePlayers[personId].myTurn = false;
+    curPlayerIndex = (curPlayerIndex+1)%activePlayersNB;
+    activePlayers[playersSequence.at(curPlayerIndex)].myTurn = true;
+    tapQtty = 0;
+
+    return (activePlayers[personId].cardsInHand == 0 ? sendEndGameMessage(personId) : getAllClientsMessages());
 }
 
-// O funcionamento principal do jogo ocorre dentro desta etapa
-void Server::newRound() {
-    printf("Início do round\n");
-    int currPlayer = 0;
-    bool endGame = false;
+bool Game::willGainCards(){
+    bool isCorrectCard = (cardsSequence[desiredCardId].first == topCard.value); 
+    return isCorrectCard ? (++tapQtty == activePlayersNB) : (tapQtty++ == 0);
+}
 
-    // A partida se repete enquanto ninguém ficar com todas as cartas
-    while(!endGame) {
-        
-        if(activePlayers[currPlayer].cardsInHand != 0) {
-            // Se o jogador ainda está na partida
-
-            if(activePlayers[currPlayer].cardsInHand == DECK_SIZE) {
-                // Se alguém ficou com todas as cartas (perdeu)
-                printf("O jogador %d perdeu a partida\n", currPlayer);
-                endGame = true;
-                return;
-            }
-
-            /* ================================
-            Pegar a carta escolhida pelo jogador por meio do socket
-            ==================================*/
-
-            // Tira a carta do deck do jogador e coloca na pilha
-            stack.push_back(activePlayers[currPlayer].deck.back());
-            activePlayers[currPlayer].deck.pop_back();
-            activePlayers[currPlayer].cardsInHand--;
-            printf("Jogador %d está com %d cartas restantes\n", currPlayer, activePlayers[currPlayer].cardsInHand);
-
-            /* ================================
-            Atualizar a tela mostrando a nova carta no topo da pilha
-            ==================================*/
-            
-            /* ================================
-            Obter o jogador que bateu por último ou bateu na carta errada para dar o monte
-            ==================================*/
-
-            // Se alguém bateu por último ou bateu errado
-            if(lose()) {
-                printf("Alguém perdeu\n");
-                int losingPlayer; // Armazena o índice do jogador que perdeu
-                /*@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
-                ESSE DO WHILE É PROVISÓRIO, para substituir a escolha do jogador com socket*/
-                do {
-                    losingPlayer = rand()%activePlayersNB;
-                } while (activePlayers[losingPlayer].cardsInHand == 0);
-                //@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
-
-                // O jogador que perde fica com a pilha de cartas
-                activePlayers[losingPlayer].cardsInHand += stack.size();
-                while(!stack.empty()) {
-                    activePlayers[losingPlayer].deck.push_back(stack.back());
-                    stack.pop_back();
-                }
-
-                if(activePlayers[currPlayer].cardsInHand == 0)
-                    printf("O jogador %d venceu\n", currPlayer);
-
-                currPlayer = losingPlayer;
-                
-            }
-            else {
-                printf("Ninguém perdeu\n");
-                // Vai para o próximo jogador
-                currPlayer = (currPlayer+1)%activePlayersNB;
-            }
+std::unordered_map<int,std::string> Game::cardTapped(int personId) {
+    if(willGainCards()){
+        // O jogador que perde fica com a pilha de cartas
+        activePlayers[personId].cardsInHand += stack.size();
+        while(!stack.empty()){
+            activePlayers[personId].deck.push_back(stack.back());
+            stack.pop_back();
         }
-        else
-            // Vai para o próximo jogador
-            currPlayer = (currPlayer+1)%activePlayersNB;
-
     }
 
-    return;
+    return getAllClientsMessages();
 }
 
-// Função que inicia o jogo
-int Game::runGame() {
-    /* ========================================================
-    if (setServerSocket() != 0) {
-        std::cout << "Erro. Jogo não pôde ser inicializado\n";
-        return;
+std::string Game::getCardName(_card c){
+    return c.value + "_" + suitIdToStr[c.suit];
+}
+
+std::string Game::getClientMessage(int personId){
+    auto person = activePlayers[personId];
+    std::string message = "nextCardName#"+ getCardName(person.deck.front()) + "|nextActivePlayerID#" + std::to_string(playersSequence.at(curPlayerIndex)) + "|nbCardsInHand#";
+
+    // nbCardsInHand#10,3,4,5,6
+    for(int i = 0; i < activePlayersNB; i++) {
+        message += std::to_string(activePlayers[playersSequence[i]].cardsInHand);
+        message += ( i < activePlayersNB - 1 ? "," : "");
     }
-    ======================================================*/
+    return message;
+}
 
-    // Zera o cardsInHand de todos os jogadores
-    for(int i = 0; i < activePlayersNB; i++) 
-        activePlayers[i].cardsInHand = 0;
 
-    // Espera conexões dos clientes e verificar se 4 players estão conectados ao servidor
-    /*==========================================================
-    awaitPlayersConnection();
-    ===========================================================*/
 
-    // Monta o deck e inicia a partida
-    createDeck();
-    shuffleDeck();
-    giveCards();
-    newRound();
+std::unordered_map<int,std::string> Game::getAllClientsMessages(){
+    std::unordered_map<int,std::string> allMessages;
+    int socketId;
+    for(int i=0;i<activePlayersNB;i++){
+        socketId = playersSequence.at(i);
+        allMessages[socketId] = getClientMessage(socketId);
+    }
+    return allMessages;
+}
 
-    return 0;
+std::unordered_map<int, std::string> Game::sendEndGameMessage(int personId) {
+    std::unordered_map<int,std::string> allMessages;
+    std::string endGameMessage = "endGame#Fim de jogo, o vencedor é o jogador de id " + std::to_string(personId);
+    int socketId;
+    for(int i=0;i<activePlayersNB;i++){
+        socketId = playersSequence.at(i);
+        allMessages[socketId] = endGameMessage;
+    }
+
+    return allMessages;
+}
+
+int main(void){
+    std::vector<int> test = {1,4,7,2,5,8};
+    Game g(test);
 }
