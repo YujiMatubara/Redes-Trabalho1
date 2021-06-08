@@ -42,14 +42,12 @@ class Game {
         std::unordered_map<int,_player> activePlayers;
 
     public:
-        std::string getCardName(_card);
         Game(std::unordered_map<int,int>);
         void initializePlayers(std::vector<int>);
 
         void createDeck();
         void shuffleDeck();
         void giveCards();
-        void newRound();
         std::unordered_map<int,std::string> cardPlayed(int);
         std::unordered_map<int,std::string> cardTapped(int); 
         bool willGainCards();
