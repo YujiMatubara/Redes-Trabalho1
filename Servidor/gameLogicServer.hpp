@@ -41,6 +41,7 @@ class Game {
         std::unordered_map<int,_player> activePlayers;
 
     public:
+        ~Game();
         Game(std::unordered_map<int,int>);
         void initializePlayers(std::vector<int>);
 

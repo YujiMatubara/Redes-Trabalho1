@@ -17,6 +17,7 @@
 #include "gameLogicServer.hpp"
 class Server{
     private:
+        bool endGame;
         std::string gamePhase;
         int socketServer;
         struct sockaddr_in addr;
@@ -30,9 +31,11 @@ class Server{
         long threadId;
         bool startGame;
         bool gameRuning = false;
+        int gamePlayers;
         Game *game;
 
     public:
+        ~Server();
         Server(int,int);
         Server();
         void changeGamePhase(std::string);
@@ -42,7 +45,9 @@ class Server{
         void setAddr();
         bool validateValue(int,std::string);
         int setServerSocket();
-        int awaitPlayersConnection();
+        void awaitPlayersConnection();
+        void afterPlayersConnection();
+        int gameCycle();
         void deleteOldThreads();
         void closeServer(player*);
         void initializeServer(int,int);
@@ -54,13 +59,21 @@ class Server{
         void onGame(int,std::string);
         void playerLogMessage(int,int);
         void gameStartMessage();
+        void clearGame();
 
     private:
-        void (Server::*desiredFunct)(int,std::string);
+        void (Server::*serverPhasesFunct)(int,std::string);
         
+        void (Server::*gameCyclesFunct)();
+
+
         std::unordered_map<std::string,void(Server::*)(int,std::string)> serverPhases{
             {"preGameStart",&Server::preGameStart},
             {"onGame",&Server::onGame}
+        };
+        std::unordered_map<std::string,void(Server::*)()> gameCycles{
+            {"preGameStart",&Server::awaitPlayersConnection},
+            {"onGame",&Server::afterPlayersConnection}
         };
         //slam_table play_card 
         std::unordered_map<std::string,std::unordered_map<int,std::string>(Game::*)(int)> gameActions{

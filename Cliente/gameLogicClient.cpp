@@ -141,7 +141,7 @@ char getKeyPress() {
         } 
         else {
             std::cin.get(); // pega o ENTER depois dos caracters (ou EOF se o primeiro char já for um ENTER)
-        }
+        }   
     }
 
     return pressedKey;
@@ -396,7 +396,7 @@ int main(int argc, char const *argv[]) {
     // Thread 2 => fica esperando entrada do usuário ( getKeyPress() ) e, dependendo do nextActivePlayerID, permite que o usuário envio o comando de baixar carta
     // O comando de bater na mesa está disponível sempre
     // Se o jogo não tiver começado, o cliente pode enviar um comando de start_game" para o servidor
-    std::thread sendMsgThread( sendMsg, clientSocket );
+    std::thread sendMsgThread(sendMsg, clientSocket);
     
     // Thread 3 => "morre" rápido, só serve para ficar escutando uma mensagem do servidor falando que o jogo iniciou
     std::thread waitStartSignal(waitStartGameSignal, clientSocket);
@@ -405,7 +405,7 @@ int main(int argc, char const *argv[]) {
 
     // Tread 1 => espera mensagem do servidor e vai atualizando as informações do estado do jogo
     // Se o nextActivePlayerID for o playerID, é permitido que esse cliente envie mensagem para o servidor
-    std::thread listenServerThread( listenServer, clientSocket );
+    std::thread listenServerThread(listenServer, clientSocket);
 
     for (int i = 0; i < nbPlayers; i++) { // inicializa cada jogador com 0 cartas (essa informação virá do servidor no futuro)
         nbCardsInHand.push_back(0);

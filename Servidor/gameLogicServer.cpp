@@ -25,6 +25,9 @@
 
 #define MSG_SIZE 256
 
+
+Game::~Game() {}
+
 // Funcao que trata o baralho de acordo com o numero de players
 void Game::initializePlayers(std::vector<int> playersSocket){
     int curSocket;
