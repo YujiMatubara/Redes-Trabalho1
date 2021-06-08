@@ -26,7 +26,10 @@ int startConnection(int socketClient, int port, const char ip[16]) {
     struct sockaddr_in host;
     host.sin_family = AF_INET;  //familia de protocolo: ARPA INTERNET
     host.sin_port = htons(port);   //porta do servidor
-    host.sin_addr.s_addr = inet_addr(ip);   //ip do servidor
+    if (!strcmp(ip, "localhost"))
+        host.sin_addr.s_addr = inet_addr("127.0.0.1");
+    else
+        host.sin_addr.s_addr = inet_addr(ip);   //ip do servidor
     memset(&host.sin_zero, 0, sizeof(host.sin_zero));   //preencher o sin_zero com 0
     if (connect(socketClient, (struct sockaddr*)&host, sizeof(host)) == -1) //conecta com o servidor
     {

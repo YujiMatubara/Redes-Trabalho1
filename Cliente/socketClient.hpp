@@ -1,4 +1,5 @@
-#pragma once
+#ifndef SOCKET_CLIENT_HPP
+#define SOCKET_CLIENT_HPP
 
 #include <sys/types.h>
 #include <unistd.h>
@@ -12,8 +13,11 @@
 #include <vector>
 #include <mutex>
 #include <unordered_map>
+#include <cstring>
 
 int initializeSocket();
-int startConnection(int socketClient, int port, const char ip[15]);
-void sendMessage(int socketClient, const char * message);
-std::string receiveMessage(int socketClient);// fim mutex lock
+int startConnection(int, int, const char *);
+void sendMessage(int, const char *);
+std::string receiveMessage(int);
+
+#endif
