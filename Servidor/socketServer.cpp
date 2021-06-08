@@ -285,3 +285,5 @@ int main() {
 
     return 0;
 }
+
+// g++ -Wall -static -pthread -lpthread -o server socketServer.cpp gameLogicServer.cpp

@@ -30,6 +30,7 @@
 #define BOLDWHITE   "\033[1m\033[37m"      /* Bold White */
 
 void loadCardDrawings();
+int getTotalCards();
 void showScreenElements();
 void * waitStartGameSignal(int);
 char getKeyPress();

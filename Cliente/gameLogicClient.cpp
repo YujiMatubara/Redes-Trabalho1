@@ -1,7 +1,7 @@
 #include "gameLogicClient.hpp"
 #include "socketClient.hpp"
 
-// g++ -Wall gameLogicClient.cpp socketClient.cpp -o testGameLogicClient -lpthread 
+// g++ -Wall gameLogicClient.cpp socketClient.cpp -o client -lpthread
 
 std::map< std::string, std::string> cardDrawings;
 std::mutex mtx;
@@ -10,7 +10,7 @@ int playerID = -1, socketID, nbPlayers, nextActivePlayerID; // nextActivePlayerI
 std::string nextCardName, desiredCard; // carta que será jogada nessa rodada
 std::vector<int> nbCardsInHand, lastNbCardsInHand; // qtd de cartas na mão de cada jogador
 bool threadRun = false; // flag que fala se as threads devem ou não rodar
-int nextCardIndex;
+int nextCardIndex, deckSize = 0;
 
 void loadCardDrawings() {
     // Cartas de paus
@@ -76,6 +76,14 @@ void loadCardDrawings() {
 return;
 }
 
+// Função que calcula o total de cartas na mão de todos os jogadores (soma total)
+int getTotalCards() {
+    int total = 0;
+    for (int cardsInHand : nbCardsInHand)
+        total += cardsInHand;
+    return total;
+}
+
 void printCardVariationMsg(int currPlayer) {
     if (nbCardsInHand[currPlayer] > lastNbCardsInHand[currPlayer]) {
         std::cout << RED << "++++++ " << nbCardsInHand[currPlayer] - lastNbCardsInHand[currPlayer] << " ++++++" << RESET << std::endl;
@@ -121,6 +129,7 @@ void showScreenElements() {
     
     std::string currCard = cardDrawings[nextCardName];
     std::cout << currCard << std::endl;
+    std::cout << "Total de cartas no monte: " << deckSize - getTotalCards() << std::endl;
     printf("\n");
     printf("Próximo comando:\n");
 }
@@ -305,6 +314,10 @@ void * listenServer(int clientSocket) {
         // atualiza "nbPlayers|nextCardName|nextActivePlayerID|nbCardsInHand_Player0|nbCardsInHand_Player1|...|nbCardsInHand_PlayerN"
         mtx.lock(); // mutex aqui para atualizar os valores
         updateGameState(serverRespFiltered);
+        if (deckSize == 0) { // calcular a qtd de cartas no baralho a partir de quantas cartas os jogadores tem na mão
+            deckSize = (int)(52/nbPlayers)*nbPlayers;
+            printf("deck size = %d\n", deckSize);
+        }
         // std::cout << "ERRO ao atualizar as variáveis de estado do servidor\n";
         mtx.unlock();
         
