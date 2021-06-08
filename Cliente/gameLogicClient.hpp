@@ -8,6 +8,7 @@
 #include <cstdio> 
 #include <thread>
 #include <mutex>
+#include <unordered_map>
 
 // Cores para terminal
 #define RESET   "\033[0m"
@@ -27,5 +28,15 @@
 #define BOLDMAGENTA "\033[1m\033[35m"      /* Bold Magenta */
 #define BOLDCYAN    "\033[1m\033[36m"      /* Bold Cyan */
 #define BOLDWHITE   "\033[1m\033[37m"      /* Bold White */
+
+void loadCardDrawings();
+void showScreenElements();
+bool waitStartGameSignal(int);
+char getKeyPress();
+std::unordered_map<std::string, std::string> createMap(int, std::string);
+std::vector<int> splitStringIntoInts(std::string &, std::string);
+int updateGameState(std::unordered_map < std::string, std::string > &);
+void * listenServer(int);
+void * sendMsg(int);
 
 #endif

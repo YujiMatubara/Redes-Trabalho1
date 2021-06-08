@@ -1,6 +1,8 @@
 #include "gameLogicClient.hpp"
 #include "socketClient.hpp"
 
+// g++ -Wall gameLogicClient.cpp socketClient.cpp -o testGameLogicClient -lpthread 
+
 std::map< std::string, std::string> cardDrawings;
 std::mutex mtx;
 bool gameRunning; // flag que verifica se o jogo começou
@@ -126,25 +128,24 @@ char getKeyPress() {
 */
 
 // Função que cria um mapa nao ordenado com os valores recebidos do servidor
-std::unordered_map<std::string, std::string> createMap(int clientSocket) {
+std::unordered_map<std::string, std::string> createMap(int clientSocket, std::string serverResponse) {
     std::unordered_map<std::string, std::string> messageServer;
-    std::string serverResponse = receiveMessage(clientSocket);
-    //std::string serverResponse ("playerNo#5|lastCardPlayer#A_paus|sla1#sla2|");
-    std::string firstDelimiter ("|");   //delimitadores para a funcao substr
-    std::string secondDelimiter ("#");
-    int pos;    //posicao do delimitador
-    int line;   //posicao inicial da linha, por exemplo: |assss|assssssss neste caso eh a pos dos 'a'
+    serverResponse[serverResponse.size()-1] = '|'; // mensagem deve terminar com um delimitador
 
-    std::vector<std::string> lineVector;    //criando um vector para dividir pelo primeiro delimitador
-    pos = serverResponse.find(firstDelimiter);  //procura pela primeira ocorrencia do '|'
-    lineVector.push_back(serverResponse.substr(0, pos));    //insere no vetor a primeira linha
-    line = pos+1;   //passa para a proxima linha
+    //std::string serverResponse ("playerNo#5|lastCardPlayer#A_paus|sla1#sla2|");
+    std::string firstDelimiter ("|"); // delimitadores para a funcao substr
+    std::string secondDelimiter ("#");
+    int pos; //posicao do delimitador
+    int line; //posicao inicial da linha, por exemplo: |assss|assssssss neste caso eh a pos dos 'a'
+
+    std::vector<std::string> lineVector; //criando um vector para dividir pelo primeiro delimitador
+    pos = serverResponse.find(firstDelimiter); //procura pela primeira ocorrencia do '|'
+    lineVector.push_back(serverResponse.substr(0, pos)); //insere no vetor a primeira linha
+    line = pos+1; //passa para a proxima linha
     while(true) {
         pos = serverResponse.find(firstDelimiter, line);    //procura pelo primeiro delimitador a linha
         if (pos == std::string::npos)   //para caso encontre o fim da linha
-        {   
             break;
-        }
         lineVector.push_back(serverResponse.substr(line, pos - line));  //adiciona no vector a linha
         line = pos+1;   //passa para a proxima linha
     }
@@ -162,11 +163,16 @@ std::unordered_map<std::string, std::string> createMap(int clientSocket) {
 bool waitStartGameSignal(int clientSocket) {
     // o servidor vai enviar o estado do início de jogo
     bool ok = true;
-
-    std::unordered_map<std::string, std::string> funcaoYuji = createMap(clientSocket);
+    
+    std::string serverResponse = receiveMessage(clientSocket);
+    // std::string serverResponse ("nbPlayers#5|nextCardName#A_paus|playerID#1|nextActivePlayerID#2|nextCardName#A_paus|nextActivePlayerID#2|nbCardsInHand#10,3,4,5,6|");
 
     //quebrando a resposta do servidor em variaveis separadas
-    std::unordered_map < std::string, std::string > serverRespFiltered = createMap(clientSocket, serverRespFiltered);
+    std::unordered_map < std::string, std::string > serverRespFiltered = createMap(clientSocket, serverResponse);
+    // for (auto & x : serverRespFiltered) {
+    //     std::cout << "map[" << x.first << "] = " << x.second << std::endl;
+    // }
+    
     mtx.lock(); // mutex para atualizar alguns valores
     if (serverRespFiltered.find("nbPlayers") != serverRespFiltered.end() && serverRespFiltered.find("playerID") != serverRespFiltered.end()) {
         nbPlayers = atoi(serverRespFiltered["nbPlayers"].c_str());
@@ -183,8 +189,19 @@ bool waitStartGameSignal(int clientSocket) {
 
 }
 
-std::vector<int> splitNbCardsInHand(std::string stringNbCardsInHand) {
+// Função que splita uma string em vários ints a partir de um delimitador
+std::vector<int> splitStringIntoInts(std::string & stringNbCardsInHand, std::string delimiter) {
     std::vector<int> nbCardsInHand;
+
+    int start = 0;
+    int end = stringNbCardsInHand.find(delimiter);
+    while (end != -1) {
+        // std::cout << stringNbCardsInHand.substr(start, end - start) << std::endl;
+        nbCardsInHand.push_back(atoi(stringNbCardsInHand.substr(start, end - start).c_str()));
+        start = end + delimiter.size();
+        end = stringNbCardsInHand.find(delimiter, start);
+    }
+    nbCardsInHand.push_back(atoi(stringNbCardsInHand.substr(start, stringNbCardsInHand.size() - start).c_str())); // último elemento, sem delimitador após ele
 
     return nbCardsInHand;
 }
@@ -201,7 +218,7 @@ int updateGameState(std::unordered_map < std::string, std::string > & serverResp
     
     if (serverRespFiltered.find("nbCardsInHand") != serverRespFiltered.end()) {
         std::string stringNbCardsInHand = serverRespFiltered["nbCardsInHand"];
-        nbCardsInHand = splitNbCardsInHand(stringNbCardsInHand);
+        nbCardsInHand = splitStringIntoInts(stringNbCardsInHand, ",");
     }
     else
         ok = false;
@@ -222,7 +239,7 @@ int updateGameState(std::unordered_map < std::string, std::string > & serverResp
 void * listenServer(int clientSocket) {
     // chama função do socket que escuta servidor
     std::string serverResponse = receiveMessage(clientSocket);
-    std::unordered_map < std::string, std::string > serverRespFiltered = funcaoDoYujiAqui();
+    std::unordered_map < std::string, std::string > serverRespFiltered = createMap(clientSocket, serverResponse);
     
     // atualiza "nbPlayers|nextCardName|nextActivePlayerID|nbCardsInHand_Player0|nbCardsInHand_Player1|...|nbCardsInHand_PlayerN"
     mtx.lock(); // mutex aqui para atualizar os valores
@@ -242,14 +259,14 @@ void * sendMsg(int clientSocket) {
     if (keyPressed == 10) {// ENTER -> comando para bater na mesa
         sendMessage(clientSocket, "slam_table");
         std::string serverResponse = receiveMessage(clientSocket);
-        std::unordered_map < std::string, std::string > serverRespFiltered = funcaoDoYujiAqui();
+        std::unordered_map < std::string, std::string > serverRespFiltered = createMap(clientSocket, serverResponse);
         updateGameState(serverRespFiltered); // atualiza os valores após "bater na mesa"
     }
-    else if (keyPressed = 'x') { // pressionou o 'x' -> comando de baixar carta
+    else if (keyPressed == 'x') { // pressionou o 'x' -> comando de baixar carta
         if (nextActivePlayerID == playerID) { // se o próximo player for o playerID, ele pode enviar o comando de baixar carta
             sendMessage(clientSocket, "play_card");
             std::string serverResponse = receiveMessage(clientSocket);
-        std::unordered_map < std::string, std::string > serverRespFiltered = funcaoDoYujiAqui();
+        std::unordered_map < std::string, std::string > serverRespFiltered = createMap(clientSocket, serverResponse);
         updateGameState(serverRespFiltered); // atualiza os valores após "bater na mesa"
         }
     }
@@ -286,13 +303,18 @@ int main(int argc, char const *argv[]) {
         std::cout << "ERRO ao conectar com o servidor!\n";
         return 1;
     }
-
+    printf("[*] Conectado em %s:%d!\n", serverIP.c_str(), serverPort);
     printf("[*] Esperando sinal de início de jogo\n");
 
     while (!gameRunning) {
         if (waitStartGameSignal(clientSocket) == true) // espera sinal de começo de jogo
             gameRunning = true;
+        else
+            sleep(1); // da um tempo pra fazer a verificação novamente
     }
+
+    for (int i = 0; i < nbPlayers; i++) // inicializa cada jogador com 0 cartas (essa informação virá do servidor no futuro)
+        nbCardsInHand.push_back(0);
 
      if (playerID == -1) {
         std::cout << "ERRO ao tentar definir o PlayerID.\n";
@@ -305,15 +327,15 @@ int main(int argc, char const *argv[]) {
 
     // Tread 1 => espera mensagem do servidor e vai atualizando as informações do estado do jogo
     // Se o nextActivePlayerID for o playerID, é permitido que esse cliente envie mensagem para o servidor
-    std::thread listenServerThread( listenServer, clientSocket, &nbPlayers, nextCardName, &nextActivePlayerID, nbCardsInHand );
+    std::thread listenServerThread( listenServer, clientSocket );
     
     // Thread 2 => fica esperando entrada do usuário ( getKeyPress() ) e, dependendo do nextActivePlayerID, permite que o usuário envio o comando de baixar carta
     // O comando de bater na mesa está disponível sempre
-    std::thread sendMsgThread( sendMsg, clientSocket, playerID, &nbPlayers, nextCardName, &nextActivePlayerID, nbCardsInHand );
+    std::thread sendMsgThread( sendMsg, clientSocket );
 
     while (gameRunning) {}
-    // int nbCardsInHand[4] = { 10, 7, 8, 15};
-    // showScreenElements(1, nbCardsInHand, "A_Ouros", 4, 3);
-    // getKeyPress();
+    
+    printf("[!] Jogo finalizado! Obrigado por participar :)\n");
+
     return 0;
 }
