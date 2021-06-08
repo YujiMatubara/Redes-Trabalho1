@@ -55,7 +55,6 @@ Game::Game(std::unordered_map<int, int> playersSocketPair) {
     }
     createDeck();
     initializePlayers(playersSocket);
-    newRound();
 }
 
 // Função que adiciona todas as cartas ao baralho (13 de cada naipe)
@@ -88,7 +87,6 @@ void Game::shuffleDeck() {
 void Game::giveCards() {
     // Distribui as cartas até o deck acabar
 
-    int currPlayer = 0;
     //int val = 3;
     for (auto personSocket : activePlayers){
         playersSequence.push_back(personSocket.first);       
@@ -176,7 +174,7 @@ std::unordered_map<int, std::string> Game::sendEndGameMessage(int personId) {
     return allMessages;
 }
 
-int main(void){
-    std::vector<int> test = {1,4,7,2,5,8};
-    Game g(test);
-}
+// int main(void){
+//     std::vector<int> test = {1,4,7,2,5,8};
+//     Game g(test);
+// }

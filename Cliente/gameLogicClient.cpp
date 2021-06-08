@@ -168,15 +168,16 @@ void * waitStartGameSignal(int clientSocket) {
 
     //quebrando a resposta do servidor em variaveis separadas
     std::unordered_map < std::string, std::string > serverRespFiltered = createMap(clientSocket, serverResponse);
-    // for (auto & x : serverRespFiltered) {
-    //     std::cout << "map[" << x.first << "] = " << x.second << std::endl;
-    // }
+    for (auto & x : serverRespFiltered) {
+        std::cout << "map[" << x.first << "] = " << x.second << std::endl;
+    }
     
     mtx.lock(); // mutex para atualizar alguns valores
     if (serverRespFiltered.find("nbPlayers") != serverRespFiltered.end() && serverRespFiltered.find("playerID") != serverRespFiltered.end()) {
         nbPlayers = atoi(serverRespFiltered["nbPlayers"].c_str());
         playerID = atoi(serverRespFiltered["playerID"].c_str());
         gameRunning = true;
+        printf("Game irá começar. gameRunning = true\n");
     }
     else {
         printf("ERRO ao setar nº de jogadores e playerID ao iniciar o jogo\n");
@@ -266,10 +267,10 @@ void * sendMsg(int clientSocket) {
         char keyPressed = getKeyPress();
         // chama função que envia mensagem para o socket -> enviar keyPressed
 
-        std::cout << "(" << keyPressed << ")" << std::endl;
+        // std::cout << "Tecla pressionada: <" << keyPressed << ">" << std::endl;
         if (!gameRunning) { // se o jogo não está jogando, pressionar enter começa o jogo
             if (keyPressed == 10) // só é permitido mandar ENTER para começar o jogo
-                sendMessage(clientSocket, "game_start");
+                sendMessage(clientSocket, "start_game");
             continue; // outras entradas não são permitidas
         }
         
@@ -341,7 +342,7 @@ int main(int argc, char const *argv[]) {
     // Thread 3 => "morre" rápido, só serve para ficar escutando uma mensagem do servidor falando que o jogo iniciou
     std::thread waitStartSignal(waitStartGameSignal, clientSocket);
 
-    while (!gameRunning) {}  // espera sinal de começo de jogo ou alguem jogador pressionar ENTER para começar o game
+    while (!gameRunning) { if(gameRunning) break; sleep(0.3);}  // espera sinal de começo de jogo ou alguem jogador pressionar ENTER para começar o game
 
     for (int i = 0; i < nbPlayers; i++) // inicializa cada jogador com 0 cartas (essa informação virá do servidor no futuro)
         nbCardsInHand.push_back(0);
