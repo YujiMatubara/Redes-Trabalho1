@@ -9,6 +9,8 @@
 #include <thread>
 #include <mutex>
 #include <unordered_map>
+#include <csignal>
+
 
 // Cores para terminal
 #define RESET   "\033[0m"
@@ -40,6 +42,11 @@ bool updateGameState(std::unordered_map < std::string, std::string > &);
 void * listenServer(int);
 void * sendMsg(int);
 void printCardVariationMsg(int);
+void terminateAll(int);
+void handleSignals();
+
+
+
 
 std::vector<char> cardsSequence = {'A', '2', '3', '4', '5', '6', '7', '8', '9', '0', 'J', 'Q', 'K'};
 

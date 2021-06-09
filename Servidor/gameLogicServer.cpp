@@ -1,5 +1,5 @@
 /* 
-    Tapão
+ *  Tapão
  * Algumas regras:
  *
  *  Todos os jogadores recebem um monte de cartas, e elas devem ser jogadas de costas, para que os valores sejam
@@ -80,13 +80,7 @@ void Game::shuffleDeck() {
     // Embaralhando deck    // Time-based seed
     unsigned seed = std::chrono::system_clock::now().time_since_epoch().count();
 
-    printf("Begin: %c, End: %c\n", deck.front().value, deck.back().value);
     std::shuffle(deck.begin(), deck.end(), std::default_random_engine(seed));
-    //unsigned seed = std::chrono::system_clock::now().time_since_epoch().count();
-
-    // Embaralhando deck
-    //shuffle(deck.begin(), deck.end(), std::default_random_engine(seed)); 
-    //default_random_engine gera números pseudo-randômicos
 
     printf("Deck embaralhado\n");
     return;
@@ -120,7 +114,6 @@ std::unordered_map<int,std::string> Game::cardPlayed(int personId){
     printf("2\n");
     topCard = activePlayers[personId].deck.front(); //coloca a carta do jogador na mesa
     std::cout << "Top Card " << getCardName(topCard) << std::endl;
-    //printf("topCard = %c - %d", topCard.value, topCard.suit);
     printf("3\n");
     activePlayers[personId].deck.pop_front();   //tira a carta do baralho do jogador
     printf("4\n");
@@ -175,9 +168,7 @@ std::unordered_map<int,std::string> Game::cardTapped(int personId){
 std::string Game::getCardName(_card c){
     std::string resp(1, c.value);
     resp += "_" + suitIdToStr[c.suit];
-    //std::cout << resp << std::endl;
     return resp;
-    //return std::to_string(c.value) + "_" + suitIdToStr[c.suit];
 }
 
 //cria a mensagem para o cliente informando o decorrer do jogo

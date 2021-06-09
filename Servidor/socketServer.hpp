@@ -1,5 +1,6 @@
 #pragma once
 
+#include <csignal>
 #include <sys/types.h>
 #include <unistd.h>
 #include <sys/socket.h>
@@ -49,7 +50,7 @@ class Server{
         void afterPlayersConnection();
         int gameCycle();
         void deleteOldThreads();
-        void closeServer(player*);
+        void closeServer();
         void initializeServer(int,int);
         void endingThread(int,int,int);
         void treatMessages(char*,int,int);
@@ -58,7 +59,6 @@ class Server{
         void preGameStart(int,std::string);
         void onGame(int,std::string);
         void playerLogMessage(int,int);
-        void gameStartMessage();
         void clearGame();
 
     private:
@@ -81,3 +81,6 @@ class Server{
             {"slam_table",&Game::cardTapped}
         };    
 };
+
+void terminateAll(int);
+void handleSignals();
