@@ -3,20 +3,16 @@
 
 #define MSG_SIZE 256
 
-
-
-
 Server::~Server() {
     // Destrói a instância de game, que é o único atributo que pode ser destruído
     delete game;
 } 
 
-//cria um map com o preGameStart e a rodada
+// Atualiza a fase do jogo
 void Server::changeGamePhase(std::string phase){
     gamePhase = phase; 
     serverPhasesFunct = serverPhases[gamePhase];
     gameCyclesFunct = gameCycles[gamePhase];
-    std::cout << "Map para o preGameStart gerado\n";
 }
 
 // Faz a organização inicial do jogo, e mostra jogadores se conectando
@@ -44,7 +40,7 @@ void Server::preGameStart(int socket,std::string sentMessage){
         // Avisa todos os jogadores conectados pelo socket que o jogo começou
         for(auto socketPair : activePlayers) {
             // Registra no servidor qual jogador receberá a mensagem agora
-            printf("Active player socketPair pair: %d - %d\n", socketPair.first, socketPair.second);
+            printf("Jogador ativo: %d\n socket do jogador: %d\n", socketPair.first, socketPair.second);
             // Monta a mensagem que será passada
             std::string message = "playerSocket#" + std::to_string(socketPair.second) + "|playerID#" + std::to_string(socketPair.first)+"|nbPlayers#"+std::to_string(curClientsNo)+"|";
             write(socketPair.second, message.c_str(), message.size());
@@ -220,13 +216,11 @@ int Server::setServerSocket() {
 // Função que cria uma nova thread
 void Server::createThread(int curThreadId){
     threads[curThreadId] = std::thread(&Server::connectionHandler,this,curThreadId);
-    std::cout << "Thread criada com sucesso!\n";
 }
 
 //quando um jogador se conecta, salva a sua thread
 void Server::acceptPlayer(int curThreadId){
     activePlayers[curThreadId] = accept(socketServer, NULL, NULL);
-    printf("Aceito player da thread %d -> activePlayers[] = %d\n", curThreadId, activePlayers[curThreadId]);
 }
 
 // Função que fica aguardando os jogadores para o início da partida
@@ -273,24 +267,29 @@ int Server::gameCycle() {
     return 0;
 }
 
+// Desliga o servidor
 void Server::closeServer() {
     for (auto & players : activePlayers) close(players.second);
-    
+
+    std::cout << "O servidor será desligado\n";    
     close(socketServer);
 
     return;
 }
 
+// Inicializa o servidor
 void Server::initializeServer(int maxPlayers,int serverPort){
     this->maxPlayers = maxPlayers;  //maximo players permitido pelo jogo
     this->serverPort = serverPort;
-    changeGamePhase("preGameStart");  
+    changeGamePhase("preGameStart"); // Informa a fase atual do jogo 
     endGame = false;
     gameRuning = false;
     curClientsNo = 0;
     threadId = 0;
+    std::cout << "Servidor inicializado\n";
 }
 
+// Construtor do servidor que não utiliza parâmetros
 Server::Server(){
     Server(6, 18120);   //num players e porta definidos
 }
@@ -305,16 +304,19 @@ Server::Server(int maxPlayers,int serverPort){
 
 Server server;
 
+// Função que elimina o funcionamento do jogo
 void terminateAll(int signum) {
     server.closeServer();
     exit(signum);
 }
 
+// Trabalha com sinais para decidir se o jogo vai ser encerrado
 void handleSignals(){
     std::vector<int> handledSignals = {SIGTERM,SIGSEGV,SIGINT,SIGILL,SIGABRT,SIGFPE};
     for(auto _signal : handledSignals) signal(_signal,terminateAll);
 }
 
+// Função main, usada para a manipulação de sinais
 int main() {
     handleSignals();
     return 0;

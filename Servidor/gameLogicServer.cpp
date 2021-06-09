@@ -77,9 +77,8 @@ void Game::createDeck() {
 
 // Função que dá suffle no baralho
 void Game::shuffleDeck() {
-    // Embaralhando deck    // Time-based seed
+    // Embaralhando deck usando uma seed
     unsigned seed = std::chrono::system_clock::now().time_since_epoch().count();
-
     std::shuffle(deck.begin(), deck.end(), std::default_random_engine(seed));
 
     printf("Deck embaralhado\n");
@@ -90,12 +89,9 @@ void Game::shuffleDeck() {
 void Game::giveCards() {
     // Distribui as cartas até o deck acabar
 
-    //int val = 3;
     for (auto & personSocket : activePlayers){
         playersSequence.push_back(personSocket.first);
-        std::cout << "Player with socket " << personSocket.first << std::endl;
         for(int i=0;i<cardsPerPlayer;i++){  //roda o baralho de cada jogador
-            std::cout << "\tCard:("<< getCardName(deck.back()) << ")" << std::endl;
             personSocket.second.deck.push_back(deck.back());    //retira do baralho de 52 cartas e divide entre pequenos baralhos aos jogadores
             deck.pop_back();    //retira as cartas da pilha do primeiro deck
         }
@@ -107,25 +103,17 @@ void Game::giveCards() {
 }
 
 std::unordered_map<int,std::string> Game::cardPlayed(int personId){
-    std::cout << "Card Played\n";
-    printf("1\n");
     bool playedOnTopOfRightCard =  (stack.size() != 0) && (stack.front().value == cardsSequence[desiredCardId].first);
     desiredCardId = (desiredCardId+1)%(cardsSequence.size());   //pega o id da proxima carta desejada
-    printf("2\n");
     topCard = activePlayers[personId].deck.front(); //coloca a carta do jogador na mesa
-    std::cout << "Top Card " << getCardName(topCard) << std::endl;
-    printf("3\n");
     activePlayers[personId].deck.pop_front();   //tira a carta do baralho do jogador
-    printf("4\n");
     stack.push_front(topCard);  //coloca no baralho da mesa
-    printf("5\n");
 
     activePlayers[personId].cardsInHand --; //diminui a quantidade de carta na mao do jogador
     activePlayers[personId].myTurn = false; //o jogador da vez passa o turno
     curPlayerIndex = (curPlayerIndex+1)%activePlayersNB;
     activePlayers[playersSequence.at(curPlayerIndex)].myTurn = true;    //o proximo comeca o turno
     tapQtty = 0;
-    printf("3\n");
 
     if(playedOnTopOfRightCard) makePersonGainCards(personId);
 
@@ -135,13 +123,6 @@ std::unordered_map<int,std::string> Game::cardPlayed(int personId){
 //quando a carta da sequencia foi a mesma que a carta jogada o jogo chega no tapao
 bool Game::willGainCards(){
     bool isCorrectCard = (cardsSequence[desiredCardId].first == topCard.value); //se a carta da sequencia for igual aa jogada
-    std::cout << (isCorrectCard ? "" : "não") << "é a carta correta" << std::endl;
-    if(isCorrectCard){
-        if(tapQtty + 1 == activePlayersNB) std::cout << "É o último a bater (na carta certa), se fudeu\n";
-    }
-    else{
-        if(tapQtty == 0) std::cout << "É o primeiro que tá batendo (na carta errada) , se fudeu\n";
-    }
     
     return isCorrectCard ? (++tapQtty == activePlayersNB) : (tapQtty++ == 0);   //incrementa o valor ateh todos os jogadores terem clicado
 }
@@ -185,7 +166,6 @@ std::string Game::getClientMessage(int personId){
     }
     
     message += "|"; //a mensagem deve acabar em |
-    std::cout << "My id:" << personId << ";" << message << std::endl;   //mostrando a mensagem enviada no programa do servidor
     return message;
 }
 
