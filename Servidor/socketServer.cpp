@@ -277,13 +277,10 @@ Server::Server(int maxPlayers,int serverPort){
     close(socketServer);
 }
 
-//para compilar:
-//g++ -Wall -std=c++11 -static -pthread -Wl,--whole-archive -lpthread -Wl,--no-whole-archive -o testServerSocket socketServer.cpp gameLogicServer.cpp
-//g++ -Wall -std=c++11 -static -pthread -Wl,--whole-archive -lpthread -Wl,--no-whole-archive -o testClientSocket socketClient.cpp gameLogicClient.cpp
 int main() {
     Server s;
 
     return 0;
 }
 
-// g++ -Wall -static -pthread -lpthread -o server socketServer.cpp gameLogicServer.cpp
+// g++ -Wall -static -pthread -o server socketServer.cpp gameLogicServer.cpp

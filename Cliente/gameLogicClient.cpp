@@ -1,7 +1,7 @@
 #include "gameLogicClient.hpp"
 #include "socketClient.hpp"
 
-// g++ -Wall gameLogicClient.cpp socketClient.cpp -o client -lpthread
+// g++ -Wall -pthread -o client gameLogicClient.cpp socketClient.cpp
 
 std::map< std::string, std::string> cardDrawings;
 std::mutex mtx;
