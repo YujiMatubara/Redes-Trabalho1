@@ -33,7 +33,7 @@ void Server::preGameStart(int socket,std::string sentMessage){
         gamePlayers = activePlayers.size();
 
 
-        std::cout << "Eh pra comecar\n";
+        std::cout << "A partida irá começar!\n";
         // Comecar o jogo
         game = new Game(activePlayers);// Precisa da lista de sockets para a instância ser iniciada
         //mandar msg pra todo mundo foda foda foda
@@ -49,7 +49,7 @@ void Server::preGameStart(int socket,std::string sentMessage){
         }
     }
     else {
-        std::cout << "Erro foda >>" << sentMessage << "<<\n";
+        std::cout << "ERRO, a mensagem recebida foi: " << sentMessage << "\n";
     }
 
     return;
@@ -77,6 +77,16 @@ void Server::onGame(int socket, std::string sentMessage) {
 
     std::string toSend = "confirm_play";
     write(socket, toSend.c_str(), toSend.size());
+    mtx.unlock();
+}
+
+void Server::endGameMessage(std::string partialMessage){
+    mtx.lock();
+    std::string message = "endGame#" + partialMessage;
+    for (auto activePlayer : activePlayers){
+        write(activePlayer.second, message.c_str(), message.size());
+    }
+    std::cout << message << std::endl;
     mtx.unlock();
 }
 
@@ -120,6 +130,7 @@ bool Server::continueThread(char *msgClient,int *readSize,int socket){
     }
     if((*readSize = recv(socket, msgClient, MSG_SIZE , 0)) > 0 ){   //recebe a mensagem
         if(strcmp(msgClient,"quit") == 0){  //caso a mensagem esteja vazia
+            endGameMessage("Game ending due to client disconnection.");
             if(gameRuning) endGame = true;
             *readSize = 0;
             return false;   //erro no conteudo da mensagem
@@ -286,6 +297,7 @@ Server::Server(int maxPlayers,int serverPort){
 
 void terminateAll(int signum) {
     std::cout << "\n[!] Sinal recebido. Finalizando servidor...\n";
+    server.endGameMessage("Ending game due to server disconnection.");
     server.closeServer();
     sleep(0.5);
     exit(signum);

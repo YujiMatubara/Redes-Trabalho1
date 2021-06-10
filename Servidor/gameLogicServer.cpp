@@ -77,16 +77,11 @@ void Game::createDeck() {
 
 // Função que dá suffle no baralho
 void Game::shuffleDeck() {
-    // Embaralhando deck    // Time-based seed
+    // Embaralhando deck com uma seed que usa o tempo exato de agora
     unsigned seed = std::chrono::system_clock::now().time_since_epoch().count();
 
     printf("Begin: %c, End: %c\n", deck.front().value, deck.back().value);
     std::shuffle(deck.begin(), deck.end(), std::default_random_engine(seed));
-    //unsigned seed = std::chrono::system_clock::now().time_since_epoch().count();
-
-    // Embaralhando deck
-    //shuffle(deck.begin(), deck.end(), std::default_random_engine(seed)); 
-    //default_random_engine gera números pseudo-randômicos
 
     printf("Deck embaralhado\n");
     return;
@@ -94,9 +89,7 @@ void Game::shuffleDeck() {
 
 // Função que distribui as cartas aos jogadores
 void Game::giveCards() {
-    // Distribui as cartas até o deck acabar
-
-    //int val = 3;
+    // Distribui as cartas, dando a mesma quantidade para cada jogador
     for (auto & personSocket : activePlayers){
         playersSequence.push_back(personSocket.first);
         std::cout << "Player with socket " << personSocket.first << std::endl;
@@ -112,8 +105,11 @@ void Game::giveCards() {
     return;
 }
 
+// Função com o estado de colocar uma carta no monte
 std::unordered_map<int,std::string> Game::cardPlayed(int personId){
+    // Variável que diz se colocou uma carta em cima da carta correta da sequência
     bool playedOnTopOfRightCard =  (stack.size() != 0) && (stack.front().value == cardsSequence[desiredCardId].first);
+    
     desiredCardId = (desiredCardId+1)%(cardsSequence.size());   //pega o id da proxima carta desejada
     topCard = activePlayers[personId].deck.front(); //coloca a carta do jogador na mesa
     std::cout << "Card Played: " << getCardName(topCard) << std::endl;
@@ -129,21 +125,23 @@ std::unordered_map<int,std::string> Game::cardPlayed(int personId){
     activePlayers[playersSequence.at(curPlayerIndex)].myTurn = true;    //o proximo comeca o turno
     tapQtty = 0;
     
-
+    // Se o jogador de fato jogou em cima de uma carta certa
     if(playedOnTopOfRightCard) makePersonGainCards(personId);
 
+    // Retorna mensagens diferentes se acabaram as cartas do jogador ou não
     return (activePlayers[personId].cardsInHand == 0 ? sendEndGameMessage(personId) : getAllClientsMessages()); //envia a mensagem aos clientes conectados
 }
 
 //quando a carta da sequencia foi a mesma que a carta jogada o jogo chega no tapao
 bool Game::willGainCards(){
-    bool isCorrectCard = (cardsSequence[desiredCardId].first == topCard.value); //se a carta da sequencia for igual aa jogada
-    // std::cout << (isCorrectCard ? "-> É" : "-> Não é") << " a carta correta" << std::endl;
+    bool isCorrectCard = (cardsSequence[desiredCardId].first == topCard.value); //se a carta da sequencia for igual a jogada
+    std::cout << "A carta da sequência é a mesma do topo da pilha\n";
     
+    // Retorna se ele foi o último a bater na carta certa ou o último a bater na carta errada 
     return isCorrectCard ? (++tapQtty == activePlayersNB) : (tapQtty++ == 0);   //incrementa o valor ateh todos os jogadores terem clicado
 }
 
-
+// Função que dá todas as cartas da pilha para o jogador que perdeu
 void Game::makePersonGainCards(int personId){
     activePlayers[personId].cardsInHand += stack.size();    //aumenta o int que indica o tam do baralho do jogador
 
@@ -154,20 +152,18 @@ void Game::makePersonGainCards(int personId){
 }
 
 
-//quando o ultimo player da o tapao(carta certa), ele perde e recebe a pilha de cartas
+// Faz todo o processamento de quando o jogador dá um tapão no monte, usando as funções anteriores
 std::unordered_map<int,std::string> Game::cardTapped(int personId){
     if(willGainCards()) makePersonGainCards(personId);
 
     return getAllClientsMessages();
 }
 
-//retorna em string o valor da carta
+// Converte o valor da carta em string
 std::string Game::getCardName(_card c){
     std::string resp(1, c.value);
     resp += "_" + suitIdToStr[c.suit];
-    //std::cout << resp << std::endl;
     return resp;
-    //return std::to_string(c.value) + "_" + suitIdToStr[c.suit];
 }
 
 //cria a mensagem para o cliente informando o decorrer do jogo

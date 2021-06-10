@@ -65,22 +65,26 @@ class Server{
         void gameStartMessage();
         void clearGame();
         void handleSignals();
+        void endGameMessage(std::string);
 
     private:
+        // Ponteiro de método para as fases da partida
         void (Server::*serverPhasesFunct)(int,std::string);
         
+        // Ponteiro de método para os ciclos do jogo
         void (Server::*gameCyclesFunct)();
 
-
+        // Map usado para o ponteiro de métodos serverPhasesFunct identificar as fases do jogo
         std::unordered_map<std::string,void(Server::*)(int,std::string)> serverPhases{
             {"preGameStart",&Server::preGameStart},
             {"onGame",&Server::onGame}
         };
+        // Map utilizado para o ponteiro de métodos gameCyclesFunct identificar os ciclos do jogo
         std::unordered_map<std::string,void(Server::*)()> gameCycles{
             {"preGameStart",&Server::awaitPlayersConnection},
             {"onGame",&Server::afterPlayersConnection}
         };
-        //slam_table play_card 
+        // Map utilizado para o ponteiro de métodos identificar as ações diponíveis (colocar carta e bater no monte)
         std::unordered_map<std::string,std::unordered_map<int,std::string>(Game::*)(int)> gameActions{
             {"play_card",&Game::cardPlayed},
             {"slam_table",&Game::cardTapped}

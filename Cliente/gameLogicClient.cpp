@@ -3,14 +3,16 @@
 
 // g++ -Wall -pthread -o client gameLogicClient.cpp socketClient.cpp
 
-std::map< std::string, std::string> cardDrawings;
-std::mutex mtx;
+std::map< std::string, std::string> cardDrawings; // map com o desenho (ASCII art) das cartas
+std::mutex mtx; // mutex para regiões críticas (variáveis compartilhadas)
 bool gameRunning; // flag que verifica se o jogo começou
 int playerID = -1, socketID, nbPlayers, nextActivePlayerID; // nextActivePlayerID =  jogador que fará o comando de jogar a carta
 std::string nextCardName, desiredCard; // carta que será jogada nessa rodada
 std::vector<int> nbCardsInHand, lastNbCardsInHand; // qtd de cartas na mão de cada jogador
 bool threadRun = false; // flag que fala se as threads devem ou não rodar
 int nextCardIndex, deckSize = 0, clientSocket;
+
+// Função que carrega as imagens das cartas no map de cardDrawings
 void loadCardDrawings() {
     // Cartas de paus
     cardDrawings.insert(std::make_pair("A_paus", "╔═════════╗\n║♣        ║\n║         ║\n║    A    ║\n║         ║\n║        ♣║\n╚═════════╝"));
@@ -83,6 +85,7 @@ int getTotalCards() {
     return total;
 }
 
+// Função que printa a quantidade de cartas que o jogador perdeu ou ganhou na rodada (caso a qtd. de cartas tenha variado)
 void printCardVariationMsg(int currPlayer) {
     if (nbCardsInHand[currPlayer] > lastNbCardsInHand[currPlayer]) {
         std::cout << RED << "++++++ " << nbCardsInHand[currPlayer] - lastNbCardsInHand[currPlayer] << " ++++++" << RESET << std::endl;
@@ -107,10 +110,10 @@ void showScreenElements() {
         if (i == playerID)
             std::cout << YELLOW << "[VOCÊ]";    // Destaca qual jogador é você
         
-        printf("\t%3dº jogador: %3d cartas na mão", i+1, nbCardsInHand[i]); //cartas
+        printf("\t%3dº jogador: %3d cartas na mão", i+1, nbCardsInHand[i]); // cartas na mão de cada jogador
         
         if (nextActivePlayerID == i)
-            std::cout << RED << " <= jogador da vez" << RESET;  //se for outro player
+            std::cout << RED << " <= jogador da vez" << RESET;  // marca o jogador da vez
         
         printf("\n");
         
@@ -121,11 +124,11 @@ void showScreenElements() {
     std::cout << BLUE;
     if (desiredCard == "0")
         desiredCard = "10";
-    printf("\nCarta esperada: %s\n", desiredCard.c_str());
+    printf("\nCarta esperada: %s\n", desiredCard.c_str()); // carta que deveria sair seguindo a sequência do tapão
     std::cout << RESET;
     
     std::string currCard = cardDrawings[nextCardName];
-    std::cout << currCard << std::endl;
+    std::cout << currCard << std::endl; // printa o desenho da cartas
     std::cout << "Total de cartas no monte: " << deckSize - getTotalCards() << std::endl;
     printf("\n");
     printf("Digite x para jogar carta ou Enter para dar o Tapão:\n");
@@ -134,14 +137,15 @@ void showScreenElements() {
 // Função que espera input do usuário (só 3 comandos/chars são aceitos)
 // ENTER = bater na mesa
 // x = jogar carta
+// q = sair do jogo
 char getKeyPress() {
     char pressedKey;
     while (1) {
         pressedKey = std::cin.get();
-        if (pressedKey == 10) {
+        if (pressedKey == 10) { // chr(10) = ENTER
             break;
         }
-        else if (pressedKey == 'x' || pressedKey == 'q' || pressedKey == 's') {
+        else if (pressedKey == 'x' || pressedKey == 'q') {
             std::cin.get(); // pega o ENTER depois dos caracters (ou EOF se o primeiro char já for um ENTER)
             break;    
         } 
@@ -201,10 +205,10 @@ void * waitStartGameSignal() {
     
     mtx.lock(); // mutex para atualizar alguns valores
     if (serverRespFiltered.find("playerSocket") != serverRespFiltered.end() && serverRespFiltered.find("nbPlayers") != serverRespFiltered.end() && serverRespFiltered.find("playerID") != serverRespFiltered.end()) {
-        nbPlayers = atoi(serverRespFiltered["nbPlayers"].c_str());  //nbplayers está como string
-        playerID = atoi(serverRespFiltered["playerID"].c_str());    //playerid está como string
-        socketID = atoi(serverRespFiltered["playerSocket"].c_str());
-        // updateGameState(serverRespFiltered);
+        nbPlayers = atoi(serverRespFiltered["nbPlayers"].c_str());  // nbPlayers está como string
+        playerID = atoi(serverRespFiltered["playerID"].c_str());    // playerID está como string
+        socketID = atoi(serverRespFiltered["playerSocket"].c_str()); // playerSocketID está como string
+        
         gameRunning = true;
     }
     else {
@@ -223,9 +227,9 @@ std::vector<int> splitStringIntoInts(std::string & stringNbCardsInHand, std::str
     int start = 0;
     int end = stringNbCardsInHand.find(delimiter);
     while (end != -1) {
-        nbCardsInHand.push_back(atoi(stringNbCardsInHand.substr(start, end - start).c_str()));  //transforma a carta em número e coloca no vector
-        start = end + delimiter.size(); //pegar o inicio da linha
-        end = stringNbCardsInHand.find(delimiter, start);   //pegar o final da linha
+        nbCardsInHand.push_back(atoi(stringNbCardsInHand.substr(start, end - start).c_str()));  // transforma a carta em número e coloca no vector
+        start = end + delimiter.size(); // pegar o inicio da linha
+        end = stringNbCardsInHand.find(delimiter, start);   // pegar o final da linha
     }
     nbCardsInHand.push_back(atoi(stringNbCardsInHand.substr(start, stringNbCardsInHand.size() - start).c_str())); // último elemento, sem delimitador após ele
 
@@ -238,8 +242,8 @@ std::vector<int> splitStringIntoInts(std::string & stringNbCardsInHand, std::str
 bool updateGameState(std::unordered_map < std::string, std::string > & serverRespFiltered) {
     bool ok = true;
 
-    if (serverRespFiltered.find("nbPlayers") != serverRespFiltered.end()) { //checa se a mensagem foi corretamente recebida
-        nbPlayers = atoi(serverRespFiltered["nbPlayers"].c_str());  //recebe valor em inteiro
+    if (serverRespFiltered.find("nbPlayers") != serverRespFiltered.end()) { // checa se a mensagem foi corretamente recebida
+        nbPlayers = atoi(serverRespFiltered["nbPlayers"].c_str());  // recebe valor em inteiro
         // printf("atualizando nbPlayers -> %d\n", nbPlayers); //printa valor
     }
     else
@@ -301,8 +305,10 @@ void * listenServer() {
         std::unordered_map < std::string, std::string > serverRespFiltered = createMap(serverResponse);   //cria um map que splita os valores do jogo recebidos
 
         if (serverRespFiltered.find("endGame") != serverRespFiltered.end()) { // se no map enviado pelo servidor há um endGame, o jogo finalizou
+            mtx.lock();
             gameRunning = false;
-            printf("\n\n\n\n\n\n%s\n", serverRespFiltered["endGame"].c_str()); // mensagem de fim de jogo
+            mtx.unlock();
+            printf("\n\n%s\n", serverRespFiltered["endGame"].c_str()); // mensagem de fim de jogo
             break;
         }
         
@@ -370,11 +376,14 @@ void * sendMsg() {
 // Função que fecha o socket e dá exit()
 void terminateAll(int sigNum) {
     std::cout << "\n[!] Sinal recebido. Finalizando jogo...\n";
+    sendMessage(clientSocket, "quit");
+    gameRunning = false; // just to be sure, set game ended...
     close(clientSocket);
     sleep(0.5);
     exit(sigNum);
 }
 
+// Função que sinaliza que a função terminateAll() deve ser executada caso certos sinais do sistema sejam mandados durante execução
 void handleSignals() {
     std::vector<int> handledSignals = {SIGTERM,SIGSEGV,SIGINT,SIGILL,SIGABRT,SIGFPE};
     for(auto _signal : handledSignals) signal(_signal, terminateAll);
@@ -452,9 +461,7 @@ int main(int argc, char const *argv[]) {
     mtx.unlock();
 
     sendMsgThread.join();
-    printf("OK 1\n");
     listenServerThread.join();
-    printf("OK 2\n");
     
     close(clientSocket);
     printf("[!] Jogo finalizado! Obrigado por participar :)\n");
