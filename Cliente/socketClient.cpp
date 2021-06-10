@@ -62,7 +62,6 @@ std::string receiveMessage(int socketClient) {
 
     do {    //enquanto a mensagem do servidor nao acabar
         received = recv(socketClient, reply, 256, 0);
-        // std::cout << "bytes recieved = " << received << std::endl;
         reply[received] = '\0';
         // printf("Reply = %s\n", reply);
     } while (received <= 0);

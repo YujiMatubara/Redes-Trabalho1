@@ -24,4 +24,6 @@ Já para executar o servidor, basta dar o comando `./server` dentro da pasta `Se
 Para limpar os arquivos `.o` dê um `make clean` na raiz do projeto.
     
 # Breve descrição do trabalho:
-Nesse trabalho, foi desenvolvido uma versão digital e em C++ do jogo de cartas "Tapão". Para desenvolver esse projeto, foi utilizado multithreading (com auxílio da bilbioteca `threads`) e também sockets para conectar clientes ao servidor.
+Nesse trabalho, foi desenvolvido uma versão digital e em C++ do jogo de cartas "Tapão". 
+O jogo se baseia em jogadores, cada um em sua vez, jogars cartas no topo de uma pilha. Ao mesmo tempo que colocam é falado o nome de uma carta, o próximo jogador deve falar a carta seguinte. Quando a carta falada é a mesma que a última jogada, os jogadores devem bater na pilha. O último a bater leva as cartas.Caso batam em momento errado, a primeira pessoa que bater leva o monte. Quem terminar o jogo sem cartas ganha. Para começar o jogo basta o cliente dar `enter` até o jogo começar. Na fase de jogo o jogador na sua vez deve digitar `x` e dar enter. Para bater a qualquer momento basta apertar `enter`.
+Para desenvolver esse projeto, foi utilizado multithreading (com auxílio da bilbioteca `threads`) e também sockets para conectar clientes ao servidor.
