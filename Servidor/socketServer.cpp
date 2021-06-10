@@ -75,7 +75,7 @@ void Server::onGame(int socket, std::string sentMessage) {
         write(curSocket, message.c_str(), message.size());
     }
 
-    std::string toSend = "fix_me";   // se tirar isso, o cliente tem problemas. Resolver depois!!
+    std::string toSend = "confirm_play";
     write(socket, toSend.c_str(), toSend.size());
     mtx.unlock();
 }
