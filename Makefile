@@ -4,7 +4,7 @@ client: gameLogicClient.o socketClient.o
 	g++ -Wall -pthread gameLogicClient.o socketClient.o -o client
 
 server: gameLogicServer.o socketServer.o
-	g++ -Wall -static -pthread -lpthread gameLogicServer.o socketServer.o -o server
+	g++ -Wall -pthread -lpthread gameLogicServer.o socketServer.o -o server
 
 gameLogicClient.o: Cliente/gameLogicClient.cpp Cliente/gameLogicClient.hpp Cliente/socketClient.hpp
 	g++ -c Cliente/gameLogicClient.cpp

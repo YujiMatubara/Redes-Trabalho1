@@ -113,26 +113,22 @@ void Game::giveCards() {
 }
 
 std::unordered_map<int,std::string> Game::cardPlayed(int personId){
-    std::cout << "Card Played\n";
-    printf("1\n");
     bool playedOnTopOfRightCard =  (stack.size() != 0) && (stack.front().value == cardsSequence[desiredCardId].first);
     desiredCardId = (desiredCardId+1)%(cardsSequence.size());   //pega o id da proxima carta desejada
-    printf("2\n");
     topCard = activePlayers[personId].deck.front(); //coloca a carta do jogador na mesa
-    std::cout << "Top Card " << getCardName(topCard) << std::endl;
-    //printf("topCard = %c - %d", topCard.value, topCard.suit);
-    printf("3\n");
+    std::cout << "Card Played: " << getCardName(topCard) << std::endl;
+    
     activePlayers[personId].deck.pop_front();   //tira a carta do baralho do jogador
-    printf("4\n");
+
     stack.push_front(topCard);  //coloca no baralho da mesa
-    printf("5\n");
+
 
     activePlayers[personId].cardsInHand --; //diminui a quantidade de carta na mao do jogador
     activePlayers[personId].myTurn = false; //o jogador da vez passa o turno
     curPlayerIndex = (curPlayerIndex+1)%activePlayersNB;
     activePlayers[playersSequence.at(curPlayerIndex)].myTurn = true;    //o proximo comeca o turno
     tapQtty = 0;
-    printf("3\n");
+    
 
     if(playedOnTopOfRightCard) makePersonGainCards(personId);
 
@@ -142,13 +138,7 @@ std::unordered_map<int,std::string> Game::cardPlayed(int personId){
 //quando a carta da sequencia foi a mesma que a carta jogada o jogo chega no tapao
 bool Game::willGainCards(){
     bool isCorrectCard = (cardsSequence[desiredCardId].first == topCard.value); //se a carta da sequencia for igual aa jogada
-    std::cout << (isCorrectCard ? "" : "não") << "é a carta correta" << std::endl;
-    if(isCorrectCard){
-        if(tapQtty + 1 == activePlayersNB) std::cout << "É o último a bater (na carta certa), se fudeu\n";
-    }
-    else{
-        if(tapQtty == 0) std::cout << "É o primeiro que tá batendo (na carta errada) , se fudeu\n";
-    }
+    // std::cout << (isCorrectCard ? "-> É" : "-> Não é") << " a carta correta" << std::endl;
     
     return isCorrectCard ? (++tapQtty == activePlayersNB) : (tapQtty++ == 0);   //incrementa o valor ateh todos os jogadores terem clicado
 }

@@ -9,6 +9,7 @@
 #include <thread>
 #include <mutex>
 #include <unordered_map>
+#include <csignal>
 
 // Cores para terminal
 #define RESET   "\033[0m"
@@ -32,14 +33,16 @@
 void loadCardDrawings();
 int getTotalCards();
 void showScreenElements();
-void * waitStartGameSignal(int);
+void * waitStartGameSignal();
 char getKeyPress();
-std::unordered_map<std::string, std::string> createMap(int, std::string);
+std::unordered_map<std::string, std::string> createMap(std::string);
 std::vector<int> splitStringIntoInts(std::string &, std::string);
 bool updateGameState(std::unordered_map < std::string, std::string > &);
-void * listenServer(int);
-void * sendMsg(int);
+void * listenServer();
+void * sendMsg();
 void printCardVariationMsg(int);
+void handleSignals();
+void terminateAll(int);
 
 std::vector<char> cardsSequence = {'A', '2', '3', '4', '5', '6', '7', '8', '9', '0', 'J', 'Q', 'K'};
 

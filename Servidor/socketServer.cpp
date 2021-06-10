@@ -3,6 +3,8 @@
 
 #define MSG_SIZE 256
 
+Server server;
+
 Server::~Server() {
     // Destruir a instância de game
     delete game;
@@ -58,10 +60,14 @@ void Server::onGame(int socket, std::string sentMessage) {
     std::cout << "Chamou com " << sentMessage << std::endl;
     
     if (sentMessage == "start_game") return;
-
+    
     mtx.lock();
     std::unordered_map<int,std::string> toSendMessages = ((*game).*(gameActions[sentMessage]))(socket); //cria um map com da rodada e o decorrer dela
     std::string message;
+
+    bool weHaveAWinner =  (toSendMessages[socket].find("endGame#") != std::string::npos);
+    if (weHaveAWinner) endGame = true;
+
     int curSocket;
     for(auto toSendMessage : toSendMessages){   //cria no map o par de socket e mensagem enviados
         message = toSendMessage.second;
@@ -69,7 +75,7 @@ void Server::onGame(int socket, std::string sentMessage) {
         write(curSocket, message.c_str(), message.size());
     }
 
-    std::string toSend = "Bobao";   //teste
+    std::string toSend = "fix_me";   // se tirar isso, o cliente tem problemas. Resolver depois!!
     write(socket, toSend.c_str(), toSend.size());
     mtx.unlock();
 }
@@ -124,7 +130,7 @@ bool Server::continueThread(char *msgClient,int *readSize,int socket){
 }
 
 void Server::treatMessages(char *msgClient,int readSize,int socket){
-    std::cout << "Msg nova\n";
+    // std::cout << "Msg nova\n";
     (*this.*serverPhasesFunct)(socket,std::string(msgClient));
 
 }
@@ -133,7 +139,7 @@ void Server::treatMessages(char *msgClient,int readSize,int socket){
 void Server::endingThread(int curThreadId,int readSize,int socket){
     curClientsNo--;
     if(readSize == 0) {
-        printf("Cliente desconectado (socket nb %d\n", socket);
+        printf("Cliente desconectado (socket nb %d)\n", socket);
         close(socket);
         printf("Número de clientes = %d\n", curClientsNo);
         fflush(stdout);
@@ -246,9 +252,8 @@ int Server::gameCycle() {
     return 0;
 }
 
-void Server::closeServer(player * activePlayers) {
-    for (int i = 0; i < maxPlayers; i++)
-        close(activePlayers[i].socket); //fechando os sockets
+void Server::closeServer() {
+    for (auto & players : activePlayers) close(players.second);
     close(socketServer);
 
     return;
@@ -270,6 +275,8 @@ Server::Server(){
 
 //funcao que cria o servidor, e conecta os jogadores
 Server::Server(int maxPlayers,int serverPort){
+    handleSignals();
+
     printf("Testando socket do servidor...\n");
     initializeServer(maxPlayers,serverPort);
     setServerSocket();
@@ -277,9 +284,20 @@ Server::Server(int maxPlayers,int serverPort){
     close(socketServer);
 }
 
-int main() {
-    Server s;
+void terminateAll(int signum) {
+    std::cout << "\n[!] Sinal recebido. Finalizando servidor...\n";
+    server.closeServer();
+    sleep(0.5);
+    exit(signum);
+}
 
+void Server::handleSignals(){
+    std::vector<int> handledSignals = {SIGTERM,SIGSEGV,SIGINT,SIGILL,SIGABRT,SIGFPE};
+    for(auto _signal : handledSignals) signal(_signal, terminateAll);
+}
+
+int main() {
+    // handleSignals();
     return 0;
 }
 

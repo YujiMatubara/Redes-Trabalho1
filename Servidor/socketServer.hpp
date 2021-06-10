@@ -15,6 +15,10 @@
 #include <mutex>
 #include <unordered_map>
 #include "gameLogicServer.hpp"
+#include <csignal>
+
+void terminateAll(int);
+
 class Server{
     private:
         bool endGame;
@@ -49,7 +53,7 @@ class Server{
         void afterPlayersConnection();
         int gameCycle();
         void deleteOldThreads();
-        void closeServer(player*);
+        void closeServer();
         void initializeServer(int,int);
         void endingThread(int,int,int);
         void treatMessages(char*,int,int);
@@ -60,6 +64,7 @@ class Server{
         void playerLogMessage(int,int);
         void gameStartMessage();
         void clearGame();
+        void handleSignals();
 
     private:
         void (Server::*serverPhasesFunct)(int,std::string);
