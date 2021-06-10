@@ -11,7 +11,6 @@
 #include <unordered_map>
 #include <csignal>
 
-
 // Cores para terminal
 #define RESET   "\033[0m"
 #define BLACK   "\033[30m"      /* Black */
@@ -42,11 +41,8 @@ bool updateGameState(std::unordered_map < std::string, std::string > &);
 void * listenServer();
 void * sendMsg();
 void printCardVariationMsg(int);
-void terminateAll(int);
 void handleSignals();
-
-
-
+void terminateAll(int);
 
 std::vector<char> cardsSequence = {'A', '2', '3', '4', '5', '6', '7', '8', '9', '0', 'J', 'Q', 'K'};
 
