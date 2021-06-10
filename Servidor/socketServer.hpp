@@ -1,6 +1,5 @@
 #pragma once
 
-#include <csignal>
 #include <sys/types.h>
 #include <unistd.h>
 #include <sys/socket.h>
@@ -16,6 +15,10 @@
 #include <mutex>
 #include <unordered_map>
 #include "gameLogicServer.hpp"
+#include <csignal>
+
+void terminateAll(int);
+
 class Server{
     private:
         bool endGame;
@@ -59,7 +62,9 @@ class Server{
         void preGameStart(int,std::string);
         void onGame(int,std::string);
         void playerLogMessage(int,int);
+        void gameStartMessage();
         void clearGame();
+        void handleSignals();
 
     private:
         void (Server::*serverPhasesFunct)(int,std::string);
@@ -81,6 +86,3 @@ class Server{
             {"slam_table",&Game::cardTapped}
         };    
 };
-
-void terminateAll(int);
-void handleSignals();

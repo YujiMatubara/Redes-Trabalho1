@@ -1,5 +1,5 @@
 /* 
- *  Tapão
+    Tapão
  * Algumas regras:
  *
  *  Todos os jogadores recebem um monte de cartas, e elas devem ser jogadas de costas, para que os valores sejam
@@ -77,9 +77,16 @@ void Game::createDeck() {
 
 // Função que dá suffle no baralho
 void Game::shuffleDeck() {
-    // Embaralhando deck usando uma seed
+    // Embaralhando deck    // Time-based seed
     unsigned seed = std::chrono::system_clock::now().time_since_epoch().count();
+
+    printf("Begin: %c, End: %c\n", deck.front().value, deck.back().value);
     std::shuffle(deck.begin(), deck.end(), std::default_random_engine(seed));
+    //unsigned seed = std::chrono::system_clock::now().time_since_epoch().count();
+
+    // Embaralhando deck
+    //shuffle(deck.begin(), deck.end(), std::default_random_engine(seed)); 
+    //default_random_engine gera números pseudo-randômicos
 
     printf("Deck embaralhado\n");
     return;
@@ -89,9 +96,12 @@ void Game::shuffleDeck() {
 void Game::giveCards() {
     // Distribui as cartas até o deck acabar
 
+    //int val = 3;
     for (auto & personSocket : activePlayers){
         playersSequence.push_back(personSocket.first);
+        std::cout << "Player with socket " << personSocket.first << std::endl;
         for(int i=0;i<cardsPerPlayer;i++){  //roda o baralho de cada jogador
+            std::cout << "\tCard:("<< getCardName(deck.back()) << ")" << std::endl;
             personSocket.second.deck.push_back(deck.back());    //retira do baralho de 52 cartas e divide entre pequenos baralhos aos jogadores
             deck.pop_back();    //retira as cartas da pilha do primeiro deck
         }
@@ -106,14 +116,19 @@ std::unordered_map<int,std::string> Game::cardPlayed(int personId){
     bool playedOnTopOfRightCard =  (stack.size() != 0) && (stack.front().value == cardsSequence[desiredCardId].first);
     desiredCardId = (desiredCardId+1)%(cardsSequence.size());   //pega o id da proxima carta desejada
     topCard = activePlayers[personId].deck.front(); //coloca a carta do jogador na mesa
+    std::cout << "Card Played: " << getCardName(topCard) << std::endl;
+    
     activePlayers[personId].deck.pop_front();   //tira a carta do baralho do jogador
+
     stack.push_front(topCard);  //coloca no baralho da mesa
+
 
     activePlayers[personId].cardsInHand --; //diminui a quantidade de carta na mao do jogador
     activePlayers[personId].myTurn = false; //o jogador da vez passa o turno
     curPlayerIndex = (curPlayerIndex+1)%activePlayersNB;
     activePlayers[playersSequence.at(curPlayerIndex)].myTurn = true;    //o proximo comeca o turno
     tapQtty = 0;
+    
 
     if(playedOnTopOfRightCard) makePersonGainCards(personId);
 
@@ -123,6 +138,7 @@ std::unordered_map<int,std::string> Game::cardPlayed(int personId){
 //quando a carta da sequencia foi a mesma que a carta jogada o jogo chega no tapao
 bool Game::willGainCards(){
     bool isCorrectCard = (cardsSequence[desiredCardId].first == topCard.value); //se a carta da sequencia for igual aa jogada
+    // std::cout << (isCorrectCard ? "-> É" : "-> Não é") << " a carta correta" << std::endl;
     
     return isCorrectCard ? (++tapQtty == activePlayersNB) : (tapQtty++ == 0);   //incrementa o valor ateh todos os jogadores terem clicado
 }
@@ -149,7 +165,9 @@ std::unordered_map<int,std::string> Game::cardTapped(int personId){
 std::string Game::getCardName(_card c){
     std::string resp(1, c.value);
     resp += "_" + suitIdToStr[c.suit];
+    //std::cout << resp << std::endl;
     return resp;
+    //return std::to_string(c.value) + "_" + suitIdToStr[c.suit];
 }
 
 //cria a mensagem para o cliente informando o decorrer do jogo
@@ -166,6 +184,7 @@ std::string Game::getClientMessage(int personId){
     }
     
     message += "|"; //a mensagem deve acabar em |
+    std::cout << "My id:" << personId << ";" << message << std::endl;   //mostrando a mensagem enviada no programa do servidor
     return message;
 }
 
@@ -175,7 +194,6 @@ std::unordered_map<int,std::string> Game::getAllClientsMessages(){
     int socketId;
     for(int i=0;i<activePlayersNB;i++){ //roda para cada player:
         socketId = playersSequence.at(i);   //captura o socket de cada jogador
-        std::cout << "Socket ID: " << socketId << " : " << getClientMessage(socketId) << std::endl;
         allMessages[socketId] = getClientMessage(socketId); //coloca no map o socket de cada jogador e a mensagem do cliente
     }
     return allMessages;
