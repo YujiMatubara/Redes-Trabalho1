@@ -34,13 +34,13 @@
 void loadCardDrawings();
 int getTotalCards();
 void showScreenElements();
-void * waitStartGameSignal(int);
+void * waitStartGameSignal();
 char getKeyPress();
-std::unordered_map<std::string, std::string> createMap(int, std::string);
+std::unordered_map<std::string, std::string> createMap(std::string);
 std::vector<int> splitStringIntoInts(std::string &, std::string);
 bool updateGameState(std::unordered_map < std::string, std::string > &);
-void * listenServer(int);
-void * sendMsg(int);
+void * listenServer();
+void * sendMsg();
 void printCardVariationMsg(int);
 void terminateAll(int);
 void handleSignals();

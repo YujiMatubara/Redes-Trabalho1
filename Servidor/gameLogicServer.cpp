@@ -175,6 +175,7 @@ std::unordered_map<int,std::string> Game::getAllClientsMessages(){
     int socketId;
     for(int i=0;i<activePlayersNB;i++){ //roda para cada player:
         socketId = playersSequence.at(i);   //captura o socket de cada jogador
+        std::cout << "Socket ID: " << socketId << " : " << getClientMessage(socketId) << std::endl;
         allMessages[socketId] = getClientMessage(socketId); //coloca no map o socket de cada jogador e a mensagem do cliente
     }
     return allMessages;

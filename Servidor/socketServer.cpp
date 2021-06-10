@@ -306,6 +306,7 @@ Server server;
 
 // Função que elimina o funcionamento do jogo
 void terminateAll(int signum) {
+    printf("[!] Terminando servidor\n");
     server.closeServer();
     exit(signum);
 }
